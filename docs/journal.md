@@ -101,6 +101,12 @@
 - Espace parents → Joueurs : « Changer son code ».
 - Testé : 13/13 (dont mauvais code enfant refusé, bon code accepté).
 
+### Étape C : mise en ligne sur GitHub Pages — 🔄 2026-11-25
+- Historique du dépôt remplacé par une seule version propre (sans prénoms, sans infos Supabase, sans domaine d'école).
+- Publication automatique : `.github/workflows/pages.yml` (vérification des questions, construction avec `NEXT_PUBLIC_BASE_PATH=/KidsScool`, déploiement).
+- Testé dans le sous-dossier `/KidsScool/` : 13/13.
+- Le parent a rendu le dépôt public, puis activé Pages (Source : GitHub Actions).
+
 ### Prochaines étapes — ⏳ en attente de confirmation
 1. Fermer les anciens services : supprimer le projet Supabase (il contient encore 2 comptes), révoquer le jeton.
 2. Mettre en ligne sur GitHub Pages (dépôt public, historique nettoyé avant).
