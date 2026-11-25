@@ -133,6 +133,12 @@
 - Anglais : unité « Irregular verbs » en premier (65 verbes) : past simple, participe passé, sens, phrases, pièges « -ed », « didn't + base », present perfect, les 3 formes.
 - Testé : 141 000 questions + cas de correction, 0 problème ; navigateur 31/31.
 
+### Étape G : invitation de l'autre parent — ✅ 2026-11-25
+- Problème signalé : la conjointe a dû créer un nouveau code et un nouveau joueur (son appareil ne connaissait pas la famille).
+- Espace parents → Joueurs → « 📨 Inviter l'autre parent » : lien qui installe le même code parent et tous les joueurs ; case « effacer ce qui a été créé en double » cochée par défaut ; ouverture directe de l'Espace parents.
+- Les liens fonctionnent aussi si le site est déjà ouvert dans l'onglet.
+- Testé : navigateur 34/34 (dont le scénario exact : code et joueur en double, puis invitation).
+
 ### Prochaines étapes — ⏳ en attente de confirmation
 1. Fermer les anciens services : supprimer le projet Supabase (il contient encore 2 comptes), révoquer le jeton.
 2. (fait) Mise en ligne sur GitHub Pages.

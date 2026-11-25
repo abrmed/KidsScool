@@ -255,8 +255,20 @@ export function marquerRetourVu(id: string) {
 }
 
 /** Installe sur cet appareil le code parent et les profils reçus par un lien d'installation. */
-export function installerProfils(parent: CodeProtege, profils: Profil[]) {
+export function installerProfils(parent: CodeProtege, profils: Profil[], remplacer = false) {
   modifier((d) => {
+    // « remplacer » : on efface les joueurs créés en double sur cet appareil (et leurs résultats).
+    if (remplacer) {
+      const garder = new Set(profils.map((p) => p.id));
+      return {
+        ...d,
+        parent,
+        profils,
+        profilActif: null,
+        resultats: d.resultats.filter((r) => garder.has(r.profilId) || r.importee),
+        retours: (d.retours ?? []).filter((r) => garder.has(r.profilId)),
+      };
+    }
     const ids = new Set(d.profils.map((p) => p.id));
     const fusion = d.profils.map((p) => profils.find((n) => n.id === p.id) ?? p);
     return { ...d, parent, profils: [...fusion, ...profils.filter((p) => !ids.has(p.id))] };

@@ -76,8 +76,13 @@ function Contenu({ d, onFermer }: { d: Donnees; onFermer: () => void }) {
 
   // Fiche reçue par lien (…/parents/#fiche=…)
   useEffect(() => {
-    const m = window.location.hash.match(/fiche=([A-Za-z0-9_-]+)/);
-    if (m) decoderFiche(m[1]).then((r) => r && setFicheRecue(r));
+    const lire = () => {
+      const m = window.location.hash.match(/fiche=([A-Za-z0-9_-]+)/);
+      if (m) decoderFiche(m[1]).then((r) => r && setFicheRecue(r));
+    };
+    lire();
+    window.addEventListener("hashchange", lire);
+    return () => window.removeEventListener("hashchange", lire);
   }, []);
 
   const onglets = [
@@ -377,7 +382,7 @@ function Joueurs({ d }: { d: Donnees }) {
                   className="rounded-xl bg-primaire px-3 py-2 text-sm font-bold text-white dark:text-fond"
                   onClick={async () => {
                     if (!d.parent) return;
-                    const lien = lienInstallation(await encoderInstallation({ v: 1, parent: d.parent, profils: [p] }));
+                    const lien = lienInstallation(await encoderInstallation({ v: 1, parent: d.parent, profils: [p], pour: "enfant" }));
                     const texte = `${p.prenom}, voici ton lien pour installer KidsSchool sur ton appareil :`;
                     try {
                       if (navigator.share) { await navigator.share({ title: "KidsSchool : installation", text: texte, url: lien }); setMessage(`Lien d'installation envoyé à ${p.prenom} ✓`); return; }
@@ -411,6 +416,29 @@ function Joueurs({ d }: { d: Donnees }) {
           </li>
         ))}
       </ul>
+      <div className="flex flex-col gap-3 rounded-3xl bg-linear-to-br from-indigo-50 to-fuchsia-50 p-5 ring-2 ring-primaire dark:from-indigo-950 dark:to-fuchsia-950">
+        <h2 className="text-xl font-semibold">👨‍👩‍👦 Inviter l&apos;autre parent</h2>
+        <p className="text-texte-doux">
+          Envoie ce lien à l&apos;autre parent : son appareil recevra le <strong>même code parent</strong> et <strong>tous les joueurs</strong> ci-dessus.
+          Refais-le si tu ajoutes un joueur plus tard.
+        </p>
+        <button
+          type="button"
+          className={`${boutonPrincipal} min-h-12 text-base`}
+          onClick={async () => {
+            if (!d.parent) return;
+            const lien = lienInstallation(await encoderInstallation({ v: 1, parent: d.parent, profils: d.profils, pour: "parent" }));
+            const texte = "Voici le lien pour rejoindre notre famille sur KidsSchool (même code parent, mêmes joueurs) :";
+            try {
+              if (navigator.share) { await navigator.share({ title: "KidsSchool : rejoindre la famille", text: texte, url: lien }); setMessage("Invitation envoyée ✓"); return; }
+            } catch (e) { if ((e as Error).name === "AbortError") return; }
+            try { await navigator.clipboard.writeText(lien); setMessage("Lien d'invitation copié ✓ Envoie-le à l'autre parent par message ou courriel."); }
+            catch { setMessage(lien); }
+          }}
+        >
+          📨 Inviter l&apos;autre parent
+        </button>
+      </div>
       <div className="rounded-3xl bg-surface p-5 ring-1 ring-bordure">
         <FormulaireJoueur titre="➕ Ajouter un joueur" intro="Chaque enfant a son profil, ses points et son code secret." bouton="Ajouter" />
       </div>

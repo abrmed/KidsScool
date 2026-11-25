@@ -64,7 +64,8 @@ export function lienRetour(code: string) {
 }
 
 // ── Lien d'installation : configure l'appareil d'un enfant avec son profil ──
-export type Installation = { v: 1; parent: CodeProtege; profils: Profil[] };
+/** « enfant » : installe son profil ; « parent » : installe le code parent et tous les joueurs (autre parent). */
+export type Installation = { v: 1; parent: CodeProtege; profils: Profil[]; pour?: "enfant" | "parent" };
 
 export async function encoderInstallation(inst: Installation): Promise<string> {
   const json = new TextEncoder().encode(JSON.stringify(inst));

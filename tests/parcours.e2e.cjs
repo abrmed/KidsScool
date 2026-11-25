@@ -145,6 +145,27 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
   ok(await pe.locator("text=Démo Élève 2").count() === 1, "Appareil de l'enfant : « Qui joue ? » affiche son profil");
   await ctxE.close();
 
+  // 7b'. Inviter l'autre parent (qui a déjà créé son propre code et un joueur en double)
+  await p.click("text=Inviter l'autre parent >> nth=1");
+  await p.waitForSelector("text=Lien d'invitation copié");
+  const lienParent = await p.evaluate(() => navigator.clipboard.readText());
+  const ctxP = await b.newContext({ ...tel });
+  const pp = await ctxP.newPage();
+  await pp.goto(URL + "/"); await pp.click("text=Je suis un parent");
+  await pp.fill("#code", "1111"); await pp.fill("#code2", "1111"); await pp.click("text=Enregistrer le code");
+  await pp.fill("#prenom", "Doublon"); await pp.fill("#code-enfant", "4444"); await pp.click("text=C'est parti");
+  await pp.waitForSelector("text=Qui joue ?");
+  await pp.goto(lienParent); await pp.waitForSelector("text=Bienvenue dans la famille");
+  ok(await pp.isChecked('input[type="checkbox"]'), "Invitation parent : effacer les doublons proposé par défaut");
+  await capture(pp, S, "s7d-invitation-parent");
+  await pp.click("text=Rejoindre la famille"); await pp.waitForSelector("#code");
+  await pp.fill("#code", "2468"); await pp.click("text=Ouvrir"); await pp.waitForSelector("text=Corrections détaillées");
+  ok(true, "Autre parent : le code parent commun ouvre l'Espace parents");
+  await pp.click("text=🎒 Joueurs");
+  const joueurs = await pp.textContent("main");
+  ok(joueurs.includes("Démo Élève 2") && !joueurs.includes("Doublon"), "Autre parent : mêmes joueurs, doublon effacé");
+  await ctxP.close();
+
   // 7c. Impression
   await p.click("text=🖨️ Imprimer"); await p.waitForSelector("text=Imprimer une feuille");
   ok(await p.isVisible("text=Feuille d'exercices") && await p.isVisible("text=Jour de tempête"), "Impression : feuille de français prête (avec le texte)");

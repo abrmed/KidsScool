@@ -12,13 +12,20 @@ import { codeValide, installerProfils, modifier, useDonnees, type Profil } from 
 
 export default function Entree() {
   const d = useDonnees();
+  const router = useRouter();
   const [choisi, setChoisi] = useState<string | null>(null);
   const [installation, setInstallation] = useState<Installation | null>(null);
 
   // Lien d'installation envoyé par un parent : …/#installer=…
   useEffect(() => {
-    const m = window.location.hash.match(/installer=([A-Za-z0-9_-]+)/);
-    if (m) decoderInstallation(m[1]).then((inst) => inst && setInstallation(inst));
+    const lire = () => {
+      const m = window.location.hash.match(/installer=([A-Za-z0-9_-]+)/);
+      if (m) decoderInstallation(m[1]).then((inst) => inst && setInstallation(inst));
+    };
+    lire();
+    // Le lien peut être ouvert alors que le site est déjà affiché dans l'onglet.
+    window.addEventListener("hashchange", lire);
+    return () => window.removeEventListener("hashchange", lire);
   }, []);
 
   if (!d) return <Chargement />;
@@ -39,11 +46,13 @@ export default function Entree() {
           {installation ? (
             <Installer
               installation={installation}
-              onFait={() => {
-                installerProfils(installation.parent, installation.profils);
+              dejaSurAppareil={d.profils.filter((p) => !installation.profils.some((n) => n.id === p.id))}
+              onFait={(remplacer) => {
+                installerProfils(installation.parent, installation.profils, remplacer);
                 setInstallation(null);
                 history.replaceState(null, "", window.location.pathname);
-                if (installation.profils.length === 1) setChoisi(installation.profils[0].id);
+                if (installation.pour === "parent") router.push("/parents/");
+                else if (installation.profils.length === 1) setChoisi(installation.profils[0].id);
               }}
             />
           ) : !d.parent || d.profils.length === 0 ? (
@@ -80,17 +89,40 @@ export default function Entree() {
   );
 }
 
-/** Installation d'un ou plusieurs profils reçus par lien. */
-function Installer({ installation, onFait }: { installation: Installation; onFait: () => void }) {
-  const noms = installation.profils.map((p) => p.prenom).join(" et ");
+/** Installation reçue par lien : profil d'un enfant, ou famille complète pour l'autre parent. */
+function Installer({ installation, dejaSurAppareil, onFait }: { installation: Installation; dejaSurAppareil: Profil[]; onFait: (remplacer: boolean) => void }) {
+  const pourParent = installation.pour === "parent";
+  const [remplacer, setRemplacer] = useState(pourParent && dejaSurAppareil.length > 0);
+  const noms = installation.profils.map((p) => p.prenom).join(", ");
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <div className="flex gap-3">
-        {installation.profils.map((p, i) => <Avatar key={p.id} emoji={p.avatar} index={i} taille="lg" />)}
+      <div className="flex flex-wrap justify-center gap-3">
+        {installation.profils.map((p, i) => <Avatar key={p.id} emoji={p.avatar} index={i} taille={installation.profils.length > 2 ? "md" : "lg"} />)}
       </div>
-      <h2 className="text-3xl font-bold">Bienvenue {noms} ! 🎉</h2>
-      <p className="text-texte-doux">Un parent t&apos;a préparé ton profil. Touche le bouton pour l&apos;installer sur cet appareil, puis entre ton code secret.</p>
-      <button type="button" onClick={onFait} className={`${boutonPrincipal} w-full`}>Installer mon profil 🚀</button>
+      {pourParent ? (
+        <>
+          <h2 className="text-3xl font-bold">Bienvenue dans la famille ! 👨‍👩‍👦</h2>
+          <p className="text-texte-doux">
+            L&apos;autre parent t&apos;invite. Cet appareil recevra <strong>le même code parent</strong> et les joueurs : <strong>{noms}</strong>.
+          </p>
+          {dejaSurAppareil.length > 0 && (
+            <label className="flex items-start gap-3 rounded-2xl bg-accent-doux p-3 text-left font-semibold text-accent">
+              <input type="checkbox" className="mt-1 h-5 w-5" checked={remplacer} onChange={(e) => setRemplacer(e.target.checked)} />
+              <span>
+                Effacer ce qui a déjà été créé sur cet appareil ({dejaSurAppareil.map((p) => p.prenom).join(", ")}) pour garder seulement la famille commune. <em>Recommandé.</em>
+              </span>
+            </label>
+          )}
+          <button type="button" onClick={() => onFait(remplacer)} className={`${boutonPrincipal} w-full`}>Rejoindre la famille 🚀</button>
+          <p className="text-sm text-texte-doux">Ensuite, utilise le code parent de l&apos;autre parent pour ouvrir l&apos;Espace parents.</p>
+        </>
+      ) : (
+        <>
+          <h2 className="text-3xl font-bold">Bienvenue {noms} ! 🎉</h2>
+          <p className="text-texte-doux">Un parent t&apos;a préparé ton profil. Touche le bouton pour l&apos;installer sur cet appareil, puis entre ton code secret.</p>
+          <button type="button" onClick={() => onFait(false)} className={`${boutonPrincipal} w-full`}>Installer mon profil 🚀</button>
+        </>
+      )}
     </div>
   );
 }
