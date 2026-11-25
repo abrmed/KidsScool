@@ -1,8 +1,8 @@
 // Test de bout en bout du site statique (navigateur réel).
-// Usage : npm run build, servir le dossier out/ sur http://localhost:3200, puis :
+// Usage : npm run build, servir le dossier out/ sur http://localhost:3200 (ou SITE_URL=https://abrmed.github.io/KidsScool), puis :
 //   node tests/parcours.e2e.cjs <dossier-captures>
 const { chromium, devices } = require("playwright");
-const URL = "http://localhost:3200";
+const URL = process.env.SITE_URL || "http://localhost:3200";
 const out = [];
 const ok = (c, m) => { out.push(`[${c ? "OK" : "ÉCHEC"}] ${m}`); console.log(out[out.length - 1]); };
 

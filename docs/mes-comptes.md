@@ -12,6 +12,10 @@
 3. **Connexion partout avec le compte GitHub** : un seul identifiant à retenir.
 4. Aucun service payant n'est activé sans accord écrit dans `decisions.md`.
 
+## Le site
+- Adresse : **https://abrmed.github.io/KidsScool/** (GitHub Pages, gratuit, publié automatiquement à chaque changement).
+- Le dépôt GitHub est **public** depuis le 2026-11-25 (aucune donnée des enfants n'y est).
+
 ## Les plateformes
 
 | Plateforme | À quoi elle sert | Connexion | Coût | Carte ? | État |
