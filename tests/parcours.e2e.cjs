@@ -81,6 +81,14 @@ async function repondreAuHasard(p) {
   await p.click("text=Mon chemin"); await p.waitForSelector("text=Nombres et opérations");
   ok(await p.locator('a[href*="u=operations&n=2"]').count() === 1, "Chemin : niveau 2 débloqué après la leçon");
 
+  // 6b. Lecture : le texte s'affiche pendant les questions
+  await p.goto(URL + "/matiere/?m=francais"); await p.waitForSelector("text=Compréhension de texte");
+  await p.click('a[href*="u=comprehension&n=1"]'); await p.waitForSelector("text=Jour de tempête");
+  ok(await p.isVisible("text=Ce matin-là, Léa a ouvert les rideaux"), "Lecture : le texte s'affiche avec la question");
+  await p.waitForTimeout(900); await p.screenshot({ path: S + "/s5b-lecture.png", fullPage: true });
+  for (let i = 0; i < 8; i++) { await repondreAuHasard(p); await p.locator("button", { hasText: /Valider|Terminer/ }).click(); await p.waitForTimeout(600); }
+  await p.waitForSelector("text=Ton score");
+
   // 7. Espace parents sur l'appareil de l'enfant
   await p.goto(URL + "/parents/");
   await p.fill("#code", "0000"); await p.click("text=Ouvrir");

@@ -4,8 +4,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { BlocTexte } from "@/components/BlocTexte";
 import { Chargement, boutonPrincipal, boutonSecondaire, champ } from "@/components/ui";
-import { QUESTIONS_PAR_LECON, estNiveau, trouverUnite } from "@/contenu";
+import { QUESTIONS_PAR_LECON, estNiveau, trouverTexte, trouverUnite } from "@/contenu";
 import { creerHasard, melanger } from "@/contenu/outils";
 import { NOMS_NIVEAUX, type Niveau, type Question } from "@/contenu/types";
 import { bonneReponse, estCorrecte, etoiles } from "@/lib/correction";
@@ -119,11 +120,14 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
     setTimeout(() => onValider(reponse), 450);
   }
 
+  const texte = trouverTexte(question.texteId);
+
   return (
     <section className="flex flex-1 animate-apparaitre flex-col gap-5">
+      {texte && <BlocTexte texte={texte} />}
       <div>
         <p className="font-bold uppercase tracking-wide text-primaire">{question.consigne}</p>
-        <h1 className="mt-1 text-3xl font-semibold leading-snug sm:text-4xl">{question.enonce}</h1>
+        <h1 className={`mt-1 font-semibold leading-snug ${texte ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl"}`}>{question.enonce}</h1>
       </div>
 
       {question.type === "choix" && (

@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { CreerCodeParent } from "@/components/CreerCodeParent";
 import { FormulaireJoueur } from "@/components/FormulaireJoueur";
 import { Avatar, Chargement, LienRetour, Page, boutonPrincipal, boutonSecondaire, champ } from "@/components/ui";
+import { trouverTexte } from "@/contenu";
 import { NOMS_NIVEAUX } from "@/contenu/types";
+import { BlocTexte } from "@/components/BlocTexte";
 import { decoderFiche } from "@/lib/fiche";
 import { changerCodeJoueur, definirCodeParent, formatCodeValide, modifier, useDonnees, verifierCodeParent, type Donnees, type Resultat } from "@/lib/stockage";
 
@@ -177,6 +179,10 @@ function DetailResultat({ r, ouvertParDefaut = false }: { r: Resultat; ouvertPar
         <span aria-hidden className="text-xl transition group-open:rotate-180">⌄</span>
       </summary>
       <ol className="flex flex-col gap-3 border-t border-bordure p-4">
+        {(() => {
+          const t = trouverTexte(r.reponses.find((x) => x.question.texteId)?.question.texteId);
+          return t ? <li className="list-none"><BlocTexte texte={t} ouvert={false} /></li> : null;
+        })()}
         {r.reponses.map((rep, i) => (
           <li key={i} className={`rounded-2xl p-4 ring-2 ${rep.correcte ? "bg-emerald-50 ring-emerald-300 dark:bg-emerald-950/40 dark:ring-emerald-800" : "bg-rose-50 ring-rose-300 dark:bg-rose-950/40 dark:ring-rose-800"}`}>
             <p className="text-sm font-bold text-texte-doux">

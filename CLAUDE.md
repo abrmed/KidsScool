@@ -30,5 +30,5 @@ Depuis le 2026-11-25 : **aucun compte, aucune base de données, aucune connexion
 - Next.js 16 en export statique (`output: "export"`, dossier `out/`), Tailwind 4, polices Fredoka/Nunito installées localement.
 - Données : `localStorage` (`src/lib/stockage.ts`), toujours protégé par try/catch.
 - Contenu : `src/contenu/` (maths générées, français et anglais en banques). Après toute modification : `npm run verifier` (doit afficher 0 problème).
-- Test navigateur : `npm run build`, servir `out/` sur le port 3200, puis `node tests/parcours.e2e.cjs <dossier-captures>` (13 vérifications).
+- Test navigateur : `npm run build`, servir `out/` sur le port 3200, puis `node tests/parcours.e2e.cjs <dossier-captures>` (14 vérifications).
 - En ligne (GitHub Pages) : construire avec `NEXT_PUBLIC_BASE_PATH=/KidsScool`.

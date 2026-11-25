@@ -1,5 +1,6 @@
 import { anglais } from "./anglais";
 import { francais } from "./francais";
+import { TEXTES } from "./lecture";
 import { maths } from "./maths";
 import type { Matiere, MatiereId, Niveau, Unite } from "./types";
 
@@ -16,3 +17,5 @@ export function trouverUnite(matiere: MatiereId | string | null, unite: string |
 }
 
 export const estNiveau = (x: number): x is Niveau => NIVEAUX.includes(x as Niveau);
+
+export const trouverTexte = (id: string | undefined) => (id ? TEXTES[id] ?? null : null);

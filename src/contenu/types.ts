@@ -20,6 +20,17 @@ type Base = {
   enonce: string;
   /** Explication pour les parents (jamais montrée à l'enfant). */
   explication: string;
+  /** Texte à lire (compréhension de lecture, roman), affiché au-dessus de la question. */
+  texteId?: string;
+};
+
+/** Texte de lecture original, découpé en paragraphes numérotés. */
+export type Texte = {
+  id: string;
+  titre: string;
+  /** Ex. « Récit », « Texte informatif », « Roman · Chapitre 2 » */
+  genre: string;
+  paragraphes: string[];
 };
 
 /** Question à choix multiple (la première option est la bonne ; l'ordre est mélangé à l'affichage). */

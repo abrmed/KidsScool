@@ -108,6 +108,14 @@
 - Le parent a rendu le dépôt public, puis activé Pages (Source : GitHub Actions).
 - ✅ En ligne : **https://abrmed.github.io/KidsScool/**. Testé sur le vrai site : 13/13 (`SITE_URL=https://abrmed.github.io/KidsScool node tests/parcours.e2e.cjs`).
 
+### Étape D : lecture et roman en français — ✅ 2026-11-25
+- Demande du parent : la compréhension de texte et les romans sont le point faible des enfants.
+- Nouvelle unité « Compréhension de texte » : 5 textes originaux de plus en plus longs (≈220 → ≈720 mots) : récit, texte informatif, récit, texte argumentatif, récit long.
+- Nouvelle unité « Roman : Le secret du phare » : mini-roman original en 5 chapitres (un par niveau, ≈320 → ≈650 mots).
+- 10 questions par texte (8 tirées par leçon) : repérage, inférence, vocabulaire en contexte, personnages et motivations, chronologie (événements à remettre dans l'ordre), figures de style, idée principale, thème, type de texte.
+- Le texte reste affiché pendant les questions (paragraphes numérotés, bouton Relire/Réduire). Les parents voient aussi le texte dans la correction.
+- Testé : 120 000 questions tirées, 0 problème ; navigateur 14/14.
+
 ### Prochaines étapes — ⏳ en attente de confirmation
 1. Fermer les anciens services : supprimer le projet Supabase (il contient encore 2 comptes), révoquer le jeton.
 2. (fait) Mise en ligne sur GitHub Pages.

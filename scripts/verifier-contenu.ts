@@ -1,7 +1,7 @@
 // Vérifie toutes les unités et tous les niveaux : nombre de questions, doublons,
 // bonnes réponses acceptées par le correcteur, textes sans « NaN » ni « undefined ».
 // Usage : npx tsx scripts/verifier-contenu.ts
-import { MATIERES, NIVEAUX, QUESTIONS_PAR_LECON } from "../src/contenu";
+import { MATIERES, NIVEAUX, QUESTIONS_PAR_LECON, trouverTexte } from "../src/contenu";
 import { creerHasard } from "../src/contenu/outils";
 import { bonneReponse, estCorrecte } from "../src/lib/correction";
 
@@ -19,6 +19,7 @@ for (const m of MATIERES) for (const u of m.unites) for (const n of NIVEAUX) for
     verifiees++;
     const texte = JSON.stringify(q);
     if (/NaN|undefined|Infinity/.test(texte)) signaler(`${ou} : ${q.enonce}`);
+    if (q.texteId && !trouverTexte(q.texteId)) signaler(`${ou} : texte introuvable ${q.texteId}`);
     if (!estCorrecte(q, bonneReponse(q))) signaler(`${ou} : bonne réponse refusée → ${q.enonce} (${bonneReponse(q)})`);
     if (q.type === "choix") {
       if (q.autres.length < 1) signaler(`${ou} : pas de distracteur → ${q.enonce}`);

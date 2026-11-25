@@ -1,4 +1,5 @@
 // Français — 2e secondaire (PFEQ). Questions originales écrites pour KidsSchool.
+import { uniteComprehension, uniteRoman } from "./lecture";
 import { uniteBanque } from "./outils";
 import type { Matiere, QuestionBanque } from "./types";
 
@@ -106,8 +107,10 @@ export const francais: Matiere = {
   nom: "Français",
   icone: "📝",
   couleur: "corail",
-  slogan: "Homophones, conjugaison, accords",
+  slogan: "Lecture, roman, grammaire",
   unites: [
+    uniteComprehension,
+    uniteRoman,
     uniteBanque({ id: "homophones", titre: "Homophones", icone: "🎭", description: "a/à, et/est, ses/ces…" }, homophones),
     uniteBanque({ id: "conjugaison", titre: "Conjugaison", icone: "⏳", description: "Présent, imparfait, futur, passé composé" }, conjugaison),
     uniteBanque({ id: "accords", titre: "Accords", icone: "🧩", description: "Adjectifs, pluriels, participes passés" }, accords),
