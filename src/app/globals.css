@@ -1,0 +1,73 @@
+@import "tailwindcss";
+@import "@fontsource-variable/fredoka";
+@import "@fontsource-variable/nunito";
+
+/* KidsSchool : couleurs vives et ludiques, mode clair par défaut, mode sombre automatique */
+:root {
+  --fond: #f4f1ff;
+  --surface: #ffffff;
+  --texte: #1e1b3a;
+  --texte-doux: #5c5880;
+  --bordure: #e4defc;
+  --primaire: #6d4aff;
+  --primaire-doux: #ece6ff;
+  --accent: #b34700;
+  --accent-doux: #fff0e0;
+  --succes: #1f8a4c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #120f24;
+    --surface: #1d1938;
+    --texte: #f3f0ff;
+    --texte-doux: #b3add6;
+    --bordure: #332d5c;
+    --primaire: #a891ff;
+    --primaire-doux: #2a2350;
+    --accent: #ffb366;
+    --accent-doux: #3a2614;
+    --succes: #5ee08f;
+  }
+}
+
+@theme inline {
+  --color-fond: var(--fond);
+  --color-surface: var(--surface);
+  --color-texte: var(--texte);
+  --color-texte-doux: var(--texte-doux);
+  --color-bordure: var(--bordure);
+  --color-primaire: var(--primaire);
+  --color-primaire-doux: var(--primaire-doux);
+  --color-accent: var(--accent);
+  --color-accent-doux: var(--accent-doux);
+  --color-succes: var(--succes);
+  --font-titre: "Fredoka Variable", "Nunito Variable", system-ui, sans-serif;
+  --font-sans: "Nunito Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --animate-flotter: flotter 6s ease-in-out infinite;
+  --animate-apparaitre: apparaitre 0.5s ease-out both;
+}
+
+@keyframes flotter {
+  0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+  50% { transform: translateY(-14px) rotate(var(--rotation, 0deg)); }
+}
+
+@keyframes apparaitre {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+body {
+  background: var(--fond);
+  color: var(--texte);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, .font-titre {
+  font-family: var(--font-titre);
+}
