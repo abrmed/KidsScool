@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { BlocTexte } from "@/components/BlocTexte";
+import { Dictee } from "@/components/Dictee";
 import { Chargement, boutonPrincipal, boutonSecondaire, champ } from "@/components/ui";
 import { QUESTIONS_PAR_LECON, estNiveau, trouverTexte, trouverUnite } from "@/contenu";
 import { creerHasard, melanger } from "@/contenu/outils";
 import { NOMS_NIVEAUX, type Niveau, type Question } from "@/contenu/types";
-import { bonneReponse, estCorrecte, etoiles } from "@/lib/correction";
+import { afficherScore, bonneReponse, etoiles, evaluer } from "@/lib/correction";
 import { encoderFiche, lienFiche } from "@/lib/fiche";
 import { enregistrerResultat, nouvelId, useDonnees, type ReponseEleve, type Resultat } from "@/lib/stockage";
 
@@ -34,7 +35,7 @@ function Lecon() {
   const [graine] = useState(() => Date.now());
   const [debut] = useState(() => Date.now());
   const questions = useMemo(
-    () => (trouve && niveau ? trouve.unite.produire(niveau, QUESTIONS_PAR_LECON, creerHasard(graine)) : []),
+    () => (trouve && niveau ? trouve.unite.produire(niveau, trouve.unite.nombreQuestions ?? QUESTIONS_PAR_LECON, creerHasard(graine)) : []),
     [trouve, niveau, graine],
   );
   const [reponses, setReponses] = useState<ReponseEleve[]>([]);
@@ -55,10 +56,14 @@ function Lecon() {
   const question = questions[index];
 
   function repondre(donnee: string) {
-    const nouvelles = [...reponses, { question, donnee, correcte: estCorrecte(question, donnee), bonneReponse: bonneReponse(question) }];
+    const ev = evaluer(question, donnee);
+    const nouvelles: ReponseEleve[] = [
+      ...reponses,
+      { question, donnee, correcte: ev.points === 1, points: ev.points, commentaires: ev.commentaires, bonneReponse: bonneReponse(question) },
+    ];
     setReponses(nouvelles);
     if (nouvelles.length === questions.length && !enregistree) {
-      const score = nouvelles.filter((r) => r.correcte).length;
+      const score = nouvelles.reduce((t, r) => t + (r.points ?? 0), 0);
       const r: Resultat = {
         id: nouvelId(),
         profilId: profil!.id,
@@ -111,6 +116,7 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
   const tuiles = useMemo(() => (question.type === "ordre" ? melanger(creerHasard(graine), [...question.mots, ...(question.intrus ?? [])]) : []), [question, graine]);
 
   const reponse = question.type === "ordre" ? choisis.map((i) => tuiles[i]).join(" ") : valeur;
+  const nbMots = valeur.trim().split(/\s+/).filter(Boolean).length;
   const pret = reponse.trim().length > 0 && !envoi;
 
   function valider() {
@@ -164,6 +170,27 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
           />
         </form>
       )}
+
+      {question.type === "redaction" && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="redaction" className="sr-only">Ta réponse écrite</label>
+          <textarea
+            id="redaction"
+            rows={5}
+            spellCheck
+            autoCapitalize="sentences"
+            placeholder="Écris ta réponse en phrases complètes…"
+            value={valeur}
+            onChange={(e) => setValeur(e.target.value)}
+            className={`${champ} h-auto min-h-36 py-3 text-lg leading-relaxed`}
+          />
+          <p className="text-sm font-semibold text-texte-doux">
+            ✍️ {nbMots} mot{nbMots > 1 ? "s" : ""} · Appuie-toi sur le texte (tu peux le relire plus haut).
+          </p>
+        </div>
+      )}
+
+      {question.type === "dictee" && <Dictee phrase={question.phrase} valeur={valeur} onChange={setValeur} />}
 
       {question.type === "ordre" && (
         <div className="flex flex-col gap-4">
@@ -249,13 +276,17 @@ function EcranFin({ resultat, retour }: { resultat: Resultat; retour: string }) 
       <div className="relative w-full animate-apparaitre rounded-[2rem] bg-linear-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-6 text-white shadow-xl" style={{ animationDelay: "120ms" }}>
         <p className="font-semibold text-white/85">Ton score</p>
         <p className="font-titre text-7xl font-bold">
-          {resultat.score}<span className="text-4xl text-white/80">/{resultat.total}</span>
+          {afficherScore(resultat.score)}<span className="text-4xl text-white/80">/{resultat.total}</span>
         </p>
         <p className="mt-1 text-4xl" aria-label={`${nb} étoile(s) sur 3`}>{[1, 2, 3].map((k) => (k <= nb ? "⭐" : "☆")).join(" ")}</p>
-        <p className="mt-2 font-bold">+{10 + resultat.score * 2} points ⚡</p>
+        <p className="mt-2 font-bold">+{Math.round(10 + resultat.score * 2)} points ⚡</p>
       </div>
 
-      <p className="relative text-sm font-semibold text-texte-doux">🔒 La correction détaillée est dans l&apos;Espace parents.</p>
+      <p className="relative text-sm font-semibold text-texte-doux">
+        {resultat.reponses.some((r) => r.question.type === "redaction" || r.question.type === "dictee")
+          ? "📬 Tes parents vont lire tes réponses écrites et te laisser des commentaires."
+          : "🔒 La correction détaillée est dans l'Espace parents."}
+      </p>
 
       <div className="relative flex w-full flex-col gap-3">
         <button type="button" onClick={envoyer} className={boutonPrincipal}>📨 Envoyer ma fiche à un parent</button>

@@ -47,7 +47,19 @@ export type QuestionSaisie = Base & {
 /** Remettre des mots dans l'ordre pour former la phrase. */
 export type QuestionOrdre = Base & { type: "ordre"; mots: string[]; /** mots pièges ajoutés */ intrus?: string[] };
 
-export type Question = QuestionChoix | QuestionSaisie | QuestionOrdre;
+/** Idée attendue dans une réponse rédigée. Trouvée si l'un des « mots » apparaît (sans tenir compte des accents). */
+export type Critere = { idee: string; mots: string[]; siAbsent: string };
+
+/** Réponse rédigée (phrase complète). Corrigée par idées attendues, avec commentaires et réponse modèle. */
+export type QuestionRedaction = Base & { type: "redaction"; criteres: Critere[]; modele: string; minMots?: number };
+
+/** Dictée : une phrase lue à voix haute, que l'élève écrit. « conseils » : explication par mot difficile. */
+export type QuestionDictee = Base & { type: "dictee"; phrase: string; conseils?: Record<string, string> };
+
+export type Question = QuestionChoix | QuestionSaisie | QuestionOrdre | QuestionRedaction | QuestionDictee;
+
+/** Commentaire de correction (✓ réussi ou ✗ à revoir). */
+export type Commentaire = { ok: boolean; texte: string };
 
 /** Question de la banque, avec son niveau. */
 export type QuestionBanque = Question & { niveau: Niveau };
@@ -59,6 +71,8 @@ export type Unite = {
   description: string;
   /** Produit les questions d'une leçon (niveau donné, nombre voulu, hasard reproductible). */
   produire: (niveau: Niveau, nombre: number, hasard: () => number) => Question[];
+  /** Nombre de questions par leçon pour cette unité (par défaut 8). */
+  nombreQuestions?: number;
 };
 
 export type Matiere = {

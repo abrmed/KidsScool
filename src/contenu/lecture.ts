@@ -1,6 +1,7 @@
 // Lecture — compréhension de texte et roman. Tous les textes sont ORIGINAUX, écrits pour KidsSchool.
 // Parcours progressifs : textes courts (≈200 mots) jusqu'à des textes longs (≈750 mots).
 import { melanger } from "./outils";
+import { REDACTIONS } from "./redactions";
 import type { Niveau, Question, Texte, Unite } from "./types";
 
 type Lecture = { niveau: Niveau; texte: Texte; questions: Question[] };
@@ -17,8 +18,11 @@ function uniteLecture(infos: Omit<Unite, "produire">, lectures: Lecture[]): Unit
     produire(niveau, nombre, h) {
       const candidates = lectures.filter((l) => l.niveau === niveau);
       const l = candidates[Math.floor(h() * candidates.length)] ?? lectures[0];
-      const indices = melanger(h, l.questions.map((_, i) => i)).slice(0, nombre).sort((a, b) => a - b);
-      return indices.map((i) => ({ ...l.questions[i], texteId: l.texte.id }));
+      // Les réponses rédigées sont toujours incluses (à la fin) ; les autres questions sont tirées au hasard.
+      const redactions = REDACTIONS[l.texte.id] ?? [];
+      const nbAutres = Math.max(0, nombre - redactions.length);
+      const indices = melanger(h, l.questions.map((_, i) => i)).slice(0, nbAutres).sort((a, b) => a - b);
+      return [...indices.map((i) => l.questions[i]), ...redactions].map((q) => ({ ...q, texteId: l.texte.id }));
     },
   };
 }

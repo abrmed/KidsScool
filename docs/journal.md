@@ -116,6 +116,14 @@
 - Le texte reste affiché pendant les questions (paragraphes numérotés, bouton Relire/Réduire). Les parents voient aussi le texte dans la correction.
 - Testé : 120 000 questions tirées, 0 problème ; navigateur 14/14.
 
+### Étape E : réponses rédigées, dictée, commentaires, codes — ✅ 2026-11-25
+- Chaque texte et chaque chapitre a 2 questions à réponse rédigée (toujours incluses dans la leçon), avec idées attendues, commentaires et réponse modèle (`src/contenu/redactions.ts`).
+- Nouvelle unité « Dictée » : 30 phrases originales sur 5 niveaux, 5 phrases par leçon, lues par la voix de l'appareil (normale ou lente) ou par un parent (avec son code). Correction mot à mot : accents, accords, mots manquants ou en trop, majuscule, point, conseils par mot difficile.
+- Espace parents : réponse modèle, commentaires, note ajustable (0, ½, 1), mot du parent, « Montrer à l'enfant » (sur l'appareil) ou « Envoyer à l'enfant (lien) ».
+- Côté enfant : bandeau « nouveau message », page « Messages de mes parents » (réponses écrites et dictées seulement), « Changer mon code secret ».
+- Limite connue : la correction automatique des réponses rédigées repère des mots-clés ; elle peut être trop sévère ou trop généreuse. Le parent ajuste la note avant de montrer.
+- Testé : 125 000 questions + 8 cas de correction, 0 problème ; navigateur 24/24.
+
 ### Prochaines étapes — ⏳ en attente de confirmation
 1. Fermer les anciens services : supprimer le projet Supabase (il contient encore 2 comptes), révoquer le jeton.
 2. (fait) Mise en ligne sur GitHub Pages.

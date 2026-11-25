@@ -8,8 +8,12 @@ import { Avatar, Chargement, LienRetour, Page, boutonPrincipal, boutonSecondaire
 import { trouverTexte } from "@/contenu";
 import { NOMS_NIVEAUX } from "@/contenu/types";
 import { BlocTexte } from "@/components/BlocTexte";
-import { decoderFiche } from "@/lib/fiche";
-import { changerCodeJoueur, definirCodeParent, formatCodeValide, modifier, useDonnees, verifierCodeParent, type Donnees, type Resultat } from "@/lib/stockage";
+import { afficherScore } from "@/lib/correction";
+import { decoderFiche, encoderRetour, lienRetour } from "@/lib/fiche";
+import {
+  ajouterRetour, changerCodeJoueur, creerRetour, definirCodeParent, enregistrerRevue, estCommentable, formatCodeValide,
+  modifier, pointsDe, scoreRevise, useDonnees, verifierCodeParent, type Donnees, type Resultat,
+} from "@/lib/stockage";
 
 const dateHeure = (t: number) =>
   new Date(t).toLocaleString("fr-CA", { timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short" });
@@ -160,20 +164,50 @@ function Resultats({ d }: { d: Donnees }) {
   );
 }
 
+const COULEURS_POINTS = (p: number) =>
+  p >= 1
+    ? "bg-emerald-50 ring-emerald-300 dark:bg-emerald-950/40 dark:ring-emerald-800"
+    : p > 0
+      ? "bg-amber-50 ring-amber-300 dark:bg-amber-950/40 dark:ring-amber-800"
+      : "bg-rose-50 ring-rose-300 dark:bg-rose-950/40 dark:ring-rose-800";
+const ICONE_POINTS = (p: number) => (p >= 1 ? "✅" : p > 0 ? "🟡" : "❌");
+
 function DetailResultat({ r, ouvertParDefaut = false }: { r: Resultat; ouvertParDefaut?: boolean }) {
-  const pct = Math.round((r.score / r.total) * 100);
+  const d = useDonnees();
+  const [ajustements, setAjustements] = useState<Record<number, number>>(r.revue?.ajustements ?? {});
+  const [mot, setMot] = useState(r.revue?.motParent ?? "");
+  const [message, setMessage] = useState<string | null>(null);
+  const revue = { ajustements, motParent: mot, publieeLe: r.revue?.publieeLe };
+  const enCours: Resultat = { ...r, revue };
+  const score = scoreRevise(enCours);
+  const pct = Math.round((score / r.total) * 100);
   const couleur = pct >= 75 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-rose-500";
+  const commentable = r.reponses.some(estCommentable);
+  const enfantIci = !!d?.profils.some((p) => p.id === r.profilId);
+
+  async function envoyerLien() {
+    const lien = lienRetour(await encoderRetour(creerRetour(enCours)));
+    enregistrerRevue(r.id, revue, r);
+    const texte = `${r.prenom}, tes parents ont commenté ta leçon « ${r.uniteTitre} ». Ouvre ce lien sur ton appareil :`;
+    try {
+      if (navigator.share) { await navigator.share({ title: "KidsSchool : commentaires", text: texte, url: lien }); setMessage("Lien envoyé ✓"); return; }
+    } catch (e) { if ((e as Error).name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(lien); setMessage("Lien copié ✓ Envoie-le à l'enfant (message ou courriel)."); }
+    catch { setMessage(lien); }
+  }
+
   return (
     <details open={ouvertParDefaut} className="group overflow-hidden rounded-3xl bg-surface shadow-sm ring-1 ring-bordure">
       <summary className="flex cursor-pointer list-none items-center gap-4 p-4 hover:bg-fond">
         <span className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl font-titre font-bold text-white ${couleur}`}>
-          <span className="text-xl leading-none">{r.score}/{r.total}</span>
+          <span className="text-lg leading-none">{afficherScore(score)}/{r.total}</span>
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-titre text-lg font-semibold">{r.prenom} · {r.matiereNom}</span>
           <span className="block text-sm font-semibold text-texte-doux">
             {r.uniteTitre} · Niveau {r.niveau} ({NOMS_NIVEAUX[r.niveau]}) · {dateHeure(r.fin)} · {duree(r.fin - r.debut)}
             {r.importee ? " · 📨 fiche reçue" : ""}
+            {commentable ? (r.revue?.publieeLe ? " · 👀 commentaires montrés" : " · ✍️ à réviser") : ""}
           </span>
         </span>
         <span aria-hidden className="text-xl transition group-open:rotate-180">⌄</span>
@@ -183,30 +217,91 @@ function DetailResultat({ r, ouvertParDefaut = false }: { r: Resultat; ouvertPar
           const t = trouverTexte(r.reponses.find((x) => x.question.texteId)?.question.texteId);
           return t ? <li className="list-none"><BlocTexte texte={t} ouvert={false} /></li> : null;
         })()}
-        {r.reponses.map((rep, i) => (
-          <li key={i} className={`rounded-2xl p-4 ring-2 ${rep.correcte ? "bg-emerald-50 ring-emerald-300 dark:bg-emerald-950/40 dark:ring-emerald-800" : "bg-rose-50 ring-rose-300 dark:bg-rose-950/40 dark:ring-rose-800"}`}>
-            <p className="text-sm font-bold text-texte-doux">
-              {rep.correcte ? "✅" : "❌"} Question {i + 1} · {rep.question.consigne}
-            </p>
-            <p className="mt-1 text-lg font-semibold">{rep.question.enonce}</p>
-            {rep.question.type === "choix" && (
-              <p className="mt-1 text-sm text-texte-doux">Choix proposés : {[rep.question.bonne, ...rep.question.autres].join(" · ")}</p>
-            )}
-            <dl className="mt-2 grid gap-1 text-base sm:grid-cols-[auto_1fr] sm:gap-x-3">
-              <dt className="font-bold">Réponse donnée :</dt>
-              <dd className={rep.correcte ? "font-semibold" : "font-semibold text-rose-700 line-through decoration-2 dark:text-rose-300"}>{rep.donnee || "(vide)"}</dd>
-              {!rep.correcte && (
+        {r.reponses.map((rep, i) => {
+          const pts = ajustements[i] ?? pointsDe(rep);
+          const ecrit = estCommentable(rep);
+          return (
+            <li key={i} className={`rounded-2xl p-4 ring-2 ${COULEURS_POINTS(pts)}`}>
+              <p className="text-sm font-bold text-texte-doux">
+                {ICONE_POINTS(pts)} Question {i + 1} · {rep.question.consigne}
+                {ecrit ? ` · ${afficherScore(pts)} pt` : ""}
+              </p>
+              <p className="mt-1 text-lg font-semibold">{rep.question.type === "dictee" ? "Dictée" : rep.question.enonce}</p>
+              {rep.question.type === "choix" && (
+                <p className="mt-1 text-sm text-texte-doux">Choix proposés : {[rep.question.bonne, ...rep.question.autres].join(" · ")}</p>
+              )}
+              <dl className="mt-2 grid gap-1 text-base sm:grid-cols-[auto_1fr] sm:gap-x-3">
+                <dt className="font-bold">Réponse donnée :</dt>
+                <dd className={pts >= 1 || ecrit ? "whitespace-pre-wrap font-semibold" : "font-semibold text-rose-700 line-through decoration-2 dark:text-rose-300"}>{rep.donnee || "(vide)"}</dd>
+                {(pts < 1 || ecrit) && (
+                  <>
+                    <dt className="font-bold">{rep.question.type === "redaction" ? "Réponse modèle :" : rep.question.type === "dictee" ? "Phrase dictée :" : "Bonne réponse :"}</dt>
+                    <dd className="font-semibold text-emerald-700 dark:text-emerald-300">{rep.bonneReponse}</dd>
+                  </>
+                )}
+                {!ecrit && (
+                  <>
+                    <dt className="font-bold">Explication :</dt>
+                    <dd>{rep.question.explication}</dd>
+                  </>
+                )}
+              </dl>
+              {ecrit && (
                 <>
-                  <dt className="font-bold">Bonne réponse :</dt>
-                  <dd className="font-semibold text-emerald-700 dark:text-emerald-300">{rep.bonneReponse}</dd>
+                  <ul className="mt-3 flex flex-col gap-1.5">
+                    {(rep.commentaires ?? []).map((c, k) => (
+                      <li key={k} className={`rounded-xl px-3 py-2 text-sm font-semibold ${c.ok ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" : "bg-white text-texte dark:bg-surface"}`}>
+                        {c.ok ? "✓ " : "✗ "}{c.texte}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label={`Note de la question ${i + 1}`}>
+                    <span className="text-sm font-bold">Ta note :</span>
+                    {[0, 0.5, 1].map((v) => (
+                      <button key={v} type="button" aria-pressed={pts === v} onClick={() => setAjustements({ ...ajustements, [i]: v })} className={`h-10 min-w-14 rounded-xl px-3 font-bold ring-1 ring-bordure ${pts === v ? "bg-texte text-fond" : "bg-surface"}`}>
+                        {afficherScore(v)}
+                      </button>
+                    ))}
+                    <span className="text-xs font-semibold text-texte-doux">(proposée automatiquement : {afficherScore(pointsDe(rep))})</span>
+                  </div>
                 </>
               )}
-              <dt className="font-bold">Explication :</dt>
-              <dd>{rep.question.explication}</dd>
-            </dl>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ol>
+
+      {commentable && (
+        <section className="flex flex-col gap-3 border-t border-bordure bg-primaire-doux/50 p-4">
+          <h3 className="text-lg font-semibold">💬 Commentaires pour {r.prenom}</h3>
+          <p className="text-sm text-texte-doux">
+            L&apos;enfant verra seulement ses réponses écrites et sa dictée, avec les commentaires, la réponse modèle, tes notes et ton mot.
+            Jamais les réponses des questions à choix.
+          </p>
+          <label htmlFor={`mot-${r.id}`} className="font-semibold">Ton mot pour {r.prenom} (facultatif)</label>
+          <textarea id={`mot-${r.id}`} rows={3} className={`${champ} h-auto py-3 text-base`} value={mot} maxLength={600} onChange={(e) => setMot(e.target.value)} placeholder="Bravo pour tes efforts ! Relis le paragraphe 4 pour…" />
+          <div className="flex flex-wrap gap-2">
+            {enfantIci && (
+              <button
+                type="button"
+                className={`${boutonPrincipal} min-h-12 text-base`}
+                onClick={() => {
+                  const publie = { ...revue, publieeLe: Date.now() };
+                  enregistrerRevue(r.id, publie, r);
+                  ajouterRetour(creerRetour({ ...r, revue: publie }));
+                  setMessage(`Commentaires montrés à ${r.prenom} ✓ Il les verra dans « Messages de mes parents ».`);
+                }}
+              >
+                👀 Montrer à {r.prenom} sur cet appareil
+              </button>
+            )}
+            <button type="button" className={`${boutonSecondaire} min-h-12 text-base`} onClick={envoyerLien}>📨 Envoyer à {r.prenom} (lien)</button>
+            <button type="button" className={`${boutonSecondaire} min-h-12 text-base`} onClick={() => { enregistrerRevue(r.id, revue, r); setMessage("Révision enregistrée ✓"); }}>💾 Enregistrer</button>
+          </div>
+          {message && <p role="status" className="break-all font-semibold text-succes">{message}</p>}
+          {r.revue?.publieeLe && <p className="text-sm font-semibold text-texte-doux">Déjà montré le {dateHeure(r.revue.publieeLe)}.</p>}
+        </section>
+      )}
     </details>
   );
 }
@@ -340,7 +435,7 @@ function Reglages() {
           className="mt-4 rounded-2xl px-4 py-3 font-bold text-rose-600 ring-2 ring-rose-200 hover:bg-rose-50 dark:ring-rose-900 dark:hover:bg-rose-950/40"
           onClick={() => {
             if (!confirm("Effacer TOUTES les données de KidsSchool sur cet appareil (joueurs, progression, résultats, code parent) ?")) return;
-            modifier(() => ({ version: 1, profils: [], profilActif: null, progression: {}, xp: {}, serie: {}, resultats: [], parent: null }));
+            modifier(() => ({ version: 1, profils: [], profilActif: null, progression: {}, xp: {}, serie: {}, resultats: [], parent: null, retours: [] }));
             window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH ?? "") + "/";
           }}
         >

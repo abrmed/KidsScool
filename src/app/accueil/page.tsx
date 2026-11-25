@@ -2,10 +2,11 @@
 // Accueil de l'élève : niveau, série, et les 3 matières.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, Chargement, LienRetour, Page } from "@/components/ui";
 import { MATIERES, NIVEAUX } from "@/contenu";
-import { niveauXp, serieActuelle, useDonnees } from "@/lib/stockage";
+import { changerCodeJoueur, codeValide, formatCodeValide, niveauXp, serieActuelle, useDonnees, type Profil } from "@/lib/stockage";
+import { champ } from "@/components/ui";
 
 const DEGRADES = {
   bleu: "from-sky-500 to-blue-700",
@@ -27,6 +28,7 @@ export default function AccueilEleve() {
   const { niveau, dansNiveau } = niveauXp(xp);
   const serie = serieActuelle(d, profil.id);
   const progression = d.progression[profil.id] ?? {};
+  const nonLus = (d.retours ?? []).filter((r) => r.profilId === profil.id && !r.vu).length;
 
   return (
     <Page>
@@ -57,6 +59,17 @@ export default function AccueilEleve() {
         </div>
       </section>
 
+      <Link
+        href="/messages/"
+        className={`flex items-center gap-3 rounded-3xl p-4 font-titre text-lg font-semibold shadow-sm ring-1 transition hover:-translate-y-0.5 ${nonLus ? "bg-linear-to-r from-amber-300 to-orange-400 text-amber-950 ring-amber-400" : "bg-surface ring-bordure"}`}
+      >
+        <span aria-hidden className="text-3xl">{nonLus ? "📬" : "📭"}</span>
+        <span className="flex-1">
+          {nonLus ? `Tu as ${nonLus} nouveau${nonLus > 1 ? "x" : ""} message${nonLus > 1 ? "s" : ""} de tes parents !` : "Messages de mes parents"}
+        </span>
+        <span aria-hidden>→</span>
+      </Link>
+
       <section aria-labelledby="titre-matieres">
         <h2 id="titre-matieres" className="mb-3 text-2xl font-semibold">🎮 Mes matières</h2>
         <ul className="grid gap-4 sm:grid-cols-3">
@@ -86,6 +99,36 @@ export default function AccueilEleve() {
           })}
         </ul>
       </section>
+
+      <ChangerMonCode profil={profil} />
     </Page>
+  );
+}
+
+/** L'enfant change lui-même son code secret (il doit connaître l'ancien). */
+function ChangerMonCode({ profil }: { profil: Profil }) {
+  const [ancien, setAncien] = useState("");
+  const [nouveau, setNouveau] = useState("");
+  const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null);
+  return (
+    <details className="rounded-3xl bg-surface p-4 ring-1 ring-bordure">
+      <summary className="cursor-pointer font-titre text-lg font-semibold">🔑 Changer mon code secret</summary>
+      <form
+        className="mt-3 flex flex-col gap-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (profil.code && !(await codeValide(profil.code, ancien))) return setMessage({ ok: false, texte: "Ton code actuel n'est pas le bon." });
+          if (!formatCodeValide(nouveau)) return setMessage({ ok: false, texte: "Ton nouveau code doit avoir de 4 à 8 chiffres." });
+          await changerCodeJoueur(profil.id, nouveau);
+          setAncien(""); setNouveau("");
+          setMessage({ ok: true, texte: "C'est fait ! Retiens bien ton nouveau code. 🔐" });
+        }}
+      >
+        <input aria-label="Mon code actuel" placeholder="Mon code actuel" type="password" inputMode="numeric" autoComplete="off" className={champ} value={ancien} onChange={(e) => setAncien(e.target.value.trim())} />
+        <input aria-label="Mon nouveau code" placeholder="Mon nouveau code (4 à 8 chiffres)" type="password" inputMode="numeric" autoComplete="off" className={champ} value={nouveau} onChange={(e) => setNouveau(e.target.value.trim())} />
+        {message && <p role="status" className={`font-semibold ${message.ok ? "text-succes" : "text-accent"}`}>{message.texte}</p>}
+        <button type="submit" className="h-12 rounded-2xl bg-primaire font-bold text-white dark:text-fond">Changer mon code</button>
+      </form>
+    </details>
   );
 }

@@ -1,13 +1,40 @@
 "use client";
 // Toutes les données restent dans le navigateur de l'appareil (aucun serveur, aucune base de données).
 import { useSyncExternalStore } from "react";
-import type { MatiereId, Niveau, Question } from "@/contenu/types";
+import type { Commentaire, MatiereId, Niveau, Question } from "@/contenu/types";
 
 export type CodeProtege = { sel: string; empreinte: string };
 /** Un joueur. « code » : code secret de l'enfant (empreinte seulement, jamais le code lui-même). */
 export type Profil = { id: string; prenom: string; avatar: string; code?: CodeProtege };
 
-export type ReponseEleve = { question: Question; donnee: string; correcte: boolean; bonneReponse: string };
+export type ReponseEleve = {
+  question: Question;
+  donnee: string;
+  correcte: boolean;
+  bonneReponse: string;
+  /** 0, ½ ou 1 (réponses rédigées et dictée peuvent valoir ½). Absent = 1 si correcte, sinon 0. */
+  points?: number;
+  /** Commentaires automatiques (réponses rédigées, dictée). */
+  commentaires?: Commentaire[];
+};
+
+/** Révision d'un parent : notes ajustées, mot pour l'enfant, publication. */
+export type Revue = { ajustements: Record<number, number>; motParent: string; publieeLe?: number };
+
+/** Ce que l'enfant voit après publication par un parent (jamais les réponses des choix multiples). */
+export type Retour = {
+  id: string;
+  profilId: string;
+  prenom: string;
+  titre: string;
+  date: number;
+  scoreInitial: number;
+  scoreRevise: number;
+  total: number;
+  motParent: string;
+  items: { numero: number; consigne: string; enonce: string; texteId?: string; donnee: string; points: number; commentaires: Commentaire[]; modele: string }[];
+  vu: boolean;
+};
 
 export type Resultat = {
   id: string;
@@ -25,6 +52,7 @@ export type Resultat = {
   reponses: ReponseEleve[];
   /** Fiche reçue d'un autre appareil (importée par un parent). */
   importee?: boolean;
+  revue?: Revue;
 };
 
 type Progression = Record<string, Partial<Record<Niveau, number>>>; // « matiere/unite » → niveau → meilleures étoiles
@@ -38,10 +66,12 @@ export type Donnees = {
   serie: Record<string, { dernierJour: string; jours: number }>;
   resultats: Resultat[];
   parent: CodeProtege | null;
+  /** Commentaires publiés par un parent, visibles par l'enfant. */
+  retours: Retour[];
 };
 
 const CLE = "kidsschool.v1";
-const VIDE: Donnees = { version: 1, profils: [], profilActif: null, progression: {}, xp: {}, serie: {}, resultats: [], parent: null };
+const VIDE: Donnees = { version: 1, profils: [], profilActif: null, progression: {}, xp: {}, serie: {}, resultats: [], parent: null, retours: [] };
 const MAX_RESULTATS = 400;
 
 let cache: Donnees | null = null;
@@ -111,7 +141,7 @@ export function enregistrerResultat(r: Resultat, etoilesGagnees: number) {
     return {
       ...d,
       progression: { ...d.progression, [r.profilId]: prog },
-      xp: { ...d.xp, [r.profilId]: (d.xp[r.profilId] ?? 0) + 10 + r.score * 2 },
+      xp: { ...d.xp, [r.profilId]: (d.xp[r.profilId] ?? 0) + Math.round(10 + r.score * 2) },
       serie: { ...d.serie, [r.profilId]: serie },
       resultats: [r, ...d.resultats].slice(0, MAX_RESULTATS),
     };
@@ -163,4 +193,63 @@ export async function ajouterJoueur(prenom: string, avatar: string, code: string
 export async function changerCodeJoueur(profilId: string, code: string) {
   const protege = await protegerCode(code);
   modifier((d) => ({ ...d, profils: d.profils.map((p) => (p.id === profilId ? { ...p, code: protege } : p)) }));
+}
+
+// ── Révision par un parent et commentaires pour l'enfant ─────
+export const pointsDe = (r: ReponseEleve) => r.points ?? (r.correcte ? 1 : 0);
+
+/** Points d'une réponse après ajustement éventuel du parent. */
+export const pointsRevises = (res: Resultat, i: number) => res.revue?.ajustements[i] ?? pointsDe(res.reponses[i]);
+export const scoreRevise = (res: Resultat) => res.reponses.reduce((t, _, i) => t + pointsRevises(res, i), 0);
+
+/** Questions dont l'enfant peut voir les commentaires (jamais les choix multiples). */
+export const estCommentable = (r: ReponseEleve) => r.question.type === "redaction" || r.question.type === "dictee";
+
+export function enregistrerRevue(resultatId: string, revue: Revue, resultatImporte?: Resultat) {
+  modifier((d) => {
+    const existe = d.resultats.some((r) => r.id === resultatId);
+    const resultats = existe
+      ? d.resultats.map((r) => (r.id === resultatId ? { ...r, revue } : r))
+      : resultatImporte ? [{ ...resultatImporte, revue }, ...d.resultats] : d.resultats;
+    return { ...d, resultats };
+  });
+}
+
+/** Prépare ce que l'enfant verra (sans les réponses des choix multiples). */
+export function creerRetour(res: Resultat): Retour {
+  const revue = res.revue ?? { ajustements: {}, motParent: "" };
+  return {
+    id: res.id,
+    profilId: res.profilId,
+    prenom: res.prenom,
+    titre: `${res.matiereNom} · ${res.uniteTitre} · niveau ${res.niveau}`,
+    date: res.fin,
+    scoreInitial: res.score,
+    scoreRevise: scoreRevise(res),
+    total: res.total,
+    motParent: revue.motParent,
+    items: res.reponses
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => estCommentable(r))
+      .map(({ r, i }) => ({
+        numero: i + 1,
+        consigne: r.question.consigne,
+        enonce: r.question.enonce,
+        texteId: r.question.texteId,
+        donnee: r.donnee,
+        points: pointsRevises(res, i),
+        commentaires: r.commentaires ?? [],
+        modele: r.bonneReponse,
+      })),
+    vu: false,
+  };
+}
+
+/** Ajoute (ou remplace) un retour sur cet appareil. */
+export function ajouterRetour(retour: Retour) {
+  modifier((d) => ({ ...d, retours: [retour, ...(d.retours ?? []).filter((x) => x.id !== retour.id)] }));
+}
+
+export function marquerRetourVu(id: string) {
+  modifier((d) => ({ ...d, retours: (d.retours ?? []).map((x) => (x.id === id ? { ...x, vu: true } : x)) }));
 }
