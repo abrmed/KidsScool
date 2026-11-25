@@ -139,6 +139,11 @@
 - Les liens fonctionnent aussi si le site est déjà ouvert dans l'onglet.
 - Testé : navigateur 34/34 (dont le scénario exact : code et joueur en double, puis invitation).
 
+### Étape H : correction immédiate — ✅ 2026-11-25
+- Après « Valider » : « Bravo ! » ou « Pas tout à fait… », bonne réponse, explication ; bonnes et mauvaises réponses colorées dans les choix ; commentaires et exemple de bonne réponse pour les réponses écrites et la dictée ; bouton « Continuer ».
+- Testé : navigateur 35/35 (dont « chaque réponse est validée avec une explication »).
+- En attente : décision du parent sur l'envoi automatique des résultats (nécessite un service en ligne).
+
 ### Prochaines étapes — ⏳ en attente de confirmation
 1. Fermer les anciens services : supprimer le projet Supabase (il contient encore 2 comptes), révoquer le jeton.
 2. (fait) Mise en ligne sur GitHub Pages.

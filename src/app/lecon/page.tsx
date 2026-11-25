@@ -1,6 +1,6 @@
 "use client";
-// Une leçon : 8 questions, sans dire à l'élève si chaque réponse est bonne.
-// À la fin : score, étoiles et points. La correction détaillée est réservée à l'Espace parents.
+// Une leçon : après chaque réponse, l'élève voit tout de suite si c'est juste, avec une explication.
+// À la fin : score, étoiles et points. Les parents retrouvent tout dans l'Espace parents.
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -110,20 +110,18 @@ function Lecon() {
 function CarteQuestion({ question, graine, onValider, derniere }: { question: Question; graine: number; onValider: (r: string) => void; derniere: boolean }) {
   const [valeur, setValeur] = useState("");
   const [choisis, setChoisis] = useState<number[]>([]); // indices des tuiles (questions « ordre »)
-  const [envoi, setEnvoi] = useState(false);
+  const [correction, setCorrection] = useState<ReturnType<typeof evaluer> | null>(null);
 
   const options = useMemo(() => (question.type === "choix" ? melanger(creerHasard(graine), [question.bonne, ...question.autres]) : []), [question, graine]);
   const tuiles = useMemo(() => (question.type === "ordre" ? melanger(creerHasard(graine), [...question.mots, ...(question.intrus ?? [])]) : []), [question, graine]);
 
   const reponse = question.type === "ordre" ? choisis.map((i) => tuiles[i]).join(" ") : valeur;
   const nbMots = valeur.trim().split(/\s+/).filter(Boolean).length;
-  const pret = reponse.trim().length > 0 && !envoi;
+  const pret = reponse.trim().length > 0 && !correction;
 
   function valider() {
     if (!pret) return;
-    setEnvoi(true);
-    // Petite pause neutre : on confirme l'enregistrement, sans dire si c'est juste.
-    setTimeout(() => onValider(reponse), 450);
+    setCorrection(evaluer(question, reponse));
   }
 
   const texte = trouverTexte(question.texteId);
@@ -144,8 +142,17 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
               type="button"
               role="radio"
               aria-checked={valeur === o}
-              onClick={() => setValeur(o)}
-              className={`min-h-16 rounded-2xl border-2 px-4 py-3 text-left text-lg font-bold shadow-[0_4px_0] transition active:translate-y-0.5 active:shadow-[0_1px_0] ${valeur === o ? "border-primaire bg-primaire-doux text-primaire shadow-primaire/40" : "border-bordure bg-surface shadow-bordure hover:bg-fond"}`}
+              onClick={() => !correction && setValeur(o)}
+              disabled={!!correction}
+              className={`min-h-16 rounded-2xl border-2 px-4 py-3 text-left text-lg font-bold shadow-[0_4px_0] transition active:translate-y-0.5 active:shadow-[0_1px_0] ${
+                correction && o === question.bonne
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-800 shadow-emerald-600/40 dark:bg-emerald-950 dark:text-emerald-100"
+                  : correction && valeur === o
+                    ? "border-rose-500 bg-rose-50 text-rose-800 shadow-rose-600/40 dark:bg-rose-950 dark:text-rose-100"
+                    : valeur === o
+                      ? "border-primaire bg-primaire-doux text-primaire shadow-primaire/40"
+                      : "border-bordure bg-surface shadow-bordure hover:bg-fond"
+              }`}
             >
               {o}
             </button>
@@ -165,6 +172,7 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
             inputMode={question.format === "nombre" ? "decimal" : "text"}
             placeholder="Écris ta réponse ici"
             value={valeur}
+            readOnly={!!correction}
             onChange={(e) => setValeur(e.target.value)}
             className={`${champ} h-16 text-2xl`}
           />
@@ -181,6 +189,7 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
             autoCapitalize="sentences"
             placeholder="Écris ta réponse en phrases complètes…"
             value={valeur}
+            readOnly={!!correction}
             onChange={(e) => setValeur(e.target.value)}
             className={`${champ} h-auto min-h-36 py-3 text-lg leading-relaxed`}
           />
@@ -190,14 +199,14 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
         </div>
       )}
 
-      {question.type === "dictee" && <Dictee phrase={question.phrase} valeur={valeur} onChange={setValeur} />}
+      {question.type === "dictee" && <Dictee phrase={question.phrase} valeur={valeur} onChange={(v) => !correction && setValeur(v)} />}
 
       {question.type === "ordre" && (
         <div className="flex flex-col gap-4">
           <div className="flex min-h-20 flex-wrap content-start gap-2 border-b-2 border-dashed border-bordure pb-3" aria-label="Ta phrase">
             {choisis.length === 0 && <span className="py-2 text-texte-doux">Touche les mots dans le bon ordre…</span>}
             {choisis.map((i, pos) => (
-              <button key={`${i}-${pos}`} type="button" onClick={() => setChoisis(choisis.filter((_, p) => p !== pos))} className="rounded-xl border-2 border-primaire bg-primaire-doux px-3 py-2 text-lg font-bold text-primaire shadow-[0_3px_0] shadow-primaire/30">
+              <button key={`${i}-${pos}`} type="button" disabled={!!correction} onClick={() => setChoisis(choisis.filter((_, p) => p !== pos))} className="rounded-xl border-2 border-primaire bg-primaire-doux px-3 py-2 text-lg font-bold text-primaire shadow-[0_3px_0] shadow-primaire/30">
                 {tuiles[i]}
               </button>
             ))}
@@ -206,7 +215,7 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
             {tuiles.map((t, i) => {
               const utilise = choisis.includes(i);
               return (
-                <button key={i} type="button" disabled={utilise} onClick={() => setChoisis([...choisis, i])} className={`rounded-xl border-2 px-3 py-2 text-lg font-bold shadow-[0_3px_0] transition ${utilise ? "border-bordure bg-bordure text-transparent shadow-transparent" : "border-bordure bg-surface shadow-bordure hover:bg-fond"}`}>
+                <button key={i} type="button" disabled={utilise || !!correction} onClick={() => setChoisis([...choisis, i])} className={`rounded-xl border-2 px-3 py-2 text-lg font-bold shadow-[0_3px_0] transition ${utilise ? "border-bordure bg-bordure text-transparent shadow-transparent" : "border-bordure bg-surface shadow-bordure hover:bg-fond"}`}>
                   {t}
                 </button>
               );
@@ -215,12 +224,56 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
         </div>
       )}
 
-      <div className="mt-auto pt-4">
-        <button type="button" onClick={valider} disabled={!pret} className={`${boutonPrincipal} w-full`}>
-          {envoi ? "✓ Réponse enregistrée" : derniere ? "Terminer 🏁" : "Valider"}
-        </button>
+      {correction && <Retroaction question={question} correction={correction} />}
+
+      <div className="sticky bottom-0 mt-auto bg-fond/90 pb-2 pt-4 backdrop-blur">
+        {correction ? (
+          <button type="button" autoFocus onClick={() => onValider(reponse)} className={`${boutonPrincipal} w-full`}>
+            {derniere ? "Voir mon score 🏁" : "Continuer →"}
+          </button>
+        ) : (
+          <button type="button" onClick={valider} disabled={!pret} className={`${boutonPrincipal} w-full`}>
+            Valider
+          </button>
+        )}
       </div>
     </section>
+  );
+}
+
+const BRAVO = ["Bravo, c'est juste ! 🎉", "Excellent ! ⭐", "Super, bonne réponse ! 💪", "Parfait ! 🙌"];
+
+/** Correction immédiate : juste ou non, la bonne réponse et l'explication pour comprendre. */
+function Retroaction({ question, correction }: { question: Question; correction: ReturnType<typeof evaluer> }) {
+  const p = correction.points;
+  const ecrit = question.type === "redaction" || question.type === "dictee";
+  const style =
+    p >= 1
+      ? "bg-emerald-50 ring-emerald-400 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-50"
+      : p > 0
+        ? "bg-amber-50 ring-amber-400 text-amber-950 dark:bg-amber-950/60 dark:text-amber-50"
+        : "bg-rose-50 ring-rose-400 text-rose-950 dark:bg-rose-950/60 dark:text-rose-50";
+  const titre = p >= 1 ? BRAVO[question.enonce.length % BRAVO.length] : p > 0 ? "Presque ! 🟡" : "Pas tout à fait… 💡";
+  return (
+    <div role="status" className={`animate-apparaitre rounded-3xl p-5 ring-2 ${style}`}>
+      <p className="font-titre text-2xl font-bold">{titre}</p>
+      {p < 1 && !ecrit && (
+        <p className="mt-2 text-lg"><span className="font-bold">La bonne réponse : </span>{bonneReponse(question)}</p>
+      )}
+      {!ecrit && <p className="mt-2"><span className="font-bold">Pourquoi ? </span>{question.explication}</p>}
+      {ecrit && (
+        <>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {(correction.commentaires ?? []).map((c, k) => (
+              <li key={k} className="rounded-xl bg-white/70 px-3 py-2 font-semibold dark:bg-black/20">{c.ok ? "✅ " : "💡 "}{c.texte}</li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm font-bold">{question.type === "dictee" ? "La phrase était :" : "Un exemple de bonne réponse :"}</p>
+          <p className="rounded-xl bg-white/70 p-3 text-lg font-semibold dark:bg-black/20">{bonneReponse(question)}</p>
+          {question.type === "redaction" && <p className="mt-2 text-sm font-semibold">📬 Tes parents vont aussi lire ta réponse.</p>}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -284,8 +337,8 @@ function EcranFin({ resultat, retour }: { resultat: Resultat; retour: string }) 
 
       <p className="relative text-sm font-semibold text-texte-doux">
         {resultat.reponses.some((r) => r.question.type === "redaction" || r.question.type === "dictee")
-          ? "📬 Tes parents vont lire tes réponses écrites et te laisser des commentaires."
-          : "🔒 La correction détaillée est dans l'Espace parents."}
+          ? "📬 Tes parents vont lire tes réponses écrites et pourront te laisser un mot."
+          : "👨‍👩‍👦 Tes parents peuvent revoir ta leçon dans l'Espace parents."}
       </p>
 
       <div className="relative flex w-full flex-col gap-3">

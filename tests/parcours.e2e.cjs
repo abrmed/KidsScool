@@ -19,11 +19,20 @@ async function repondreAuHasard(p) {
   }
 }
 
+/** Valide la réponse, vérifie la correction immédiate, puis passe à la suite. */
+async function valider(p) {
+  await p.locator("button", { hasText: /^Valider$/ }).click();
+  await p.waitForSelector('[role="status"] >> text=/Bravo|Excellent|Super|Parfait|Presque|Pas tout à fait/');
+  const txt = await p.textContent('[role="status"]');
+  await p.locator("button", { hasText: /Continuer|Voir mon score/ }).click();
+  await p.waitForTimeout(400);
+  return txt;
+}
+
 async function faireLecon(p, nombre) {
   for (let i = 0; i < nombre; i++) {
     await repondreAuHasard(p);
-    await p.locator("button", { hasText: /Valider|Terminer/ }).click();
-    await p.waitForTimeout(600);
+    await valider(p);
   }
   await p.waitForSelector("text=Ton score");
 }
@@ -73,17 +82,21 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
   ok(await p.locator('a[href*="u=operations&n=1"]').count() === 1, "Chemin : niveau 1 ouvert");
   ok(await p.locator('a[href*="u=operations&n=2"]').count() === 0, "Chemin : niveau 2 verrouillé au départ");
   await p.click('a[href*="u=operations&n=1"]'); await p.waitForSelector("text=1/8");
-  let correctionVue = false;
+  let explications = 0;
   for (let i = 0; i < 8; i++) {
     await repondreAuHasard(p);
-    await p.locator("button", { hasText: /Valider|Terminer/ }).click();
-    if (/Bonne réponse|Explication/i.test(await p.textContent("main"))) correctionVue = true;
-    await p.waitForTimeout(600);
+    if (i === 0) {
+      await p.locator("button", { hasText: /^Valider$/ }).click();
+      await p.waitForSelector('[role="status"]');
+      await capture(p, S, "s5e-correction-immediate");
+      if (/Pourquoi/.test(await p.textContent('[role="status"]'))) explications++;
+      await p.locator("button", { hasText: /Continuer/ }).click(); await p.waitForTimeout(400);
+    } else if (/Pourquoi/.test(await valider(p))) explications++;
   }
   await p.waitForSelector("text=Ton score");
   const fin = await p.textContent("main");
   ok(/\d(,5)?\/8/.test(fin), "Fin de leçon : le score s'affiche");
-  ok(!correctionVue && !/Bonne réponse|Explication/.test(fin), "L'élève ne voit aucune correction (ni pendant, ni à la fin)");
+  ok(explications === 8, "Correction immédiate : chaque réponse est validée avec une explication (8/8)");
   await p.click("text=Mon chemin"); await p.waitForSelector("text=Nombres et opérations");
   ok(await p.locator('a[href*="u=operations&n=2"]').count() === 1, "Chemin : niveau 2 débloqué après la leçon");
 
@@ -91,12 +104,15 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
   await p.goto(URL + "/matiere/?m=francais"); await p.waitForSelector("text=Compréhension de texte");
   await p.click('a[href*="u=comprehension&n=1"]'); await p.waitForSelector("text=Jour de tempête");
   ok(await p.isVisible("text=Ce matin-là, Léa a ouvert les rideaux"), "Lecture : le texte s'affiche avec la question");
-  for (let i = 0; i < 6; i++) { await repondreAuHasard(p); await p.locator("button", { hasText: /Valider|Terminer/ }).click(); await p.waitForTimeout(600); }
+  for (let i = 0; i < 6; i++) { await repondreAuHasard(p); await valider(p); }
   ok(await p.locator("#redaction").count() === 1, "Lecture : une question à réponse rédigée apparaît");
   await capture(p, S, "s5c-redaction");
-  for (let i = 0; i < 2; i++) { await repondreAuHasard(p); await p.locator("button", { hasText: /Valider|Terminer/ }).click(); await p.waitForTimeout(600); }
+  await repondreAuHasard(p);
+  const retro = await valider(p);
+  ok(/exemple de bonne réponse/i.test(retro), "Réponse rédigée : commentaires et exemple de bonne réponse affichés tout de suite");
+  await repondreAuHasard(p); await valider(p);
   await p.waitForSelector("text=Ton score");
-  ok(await p.isVisible("text=Tes parents vont lire tes réponses écrites"), "Fin de lecture : l'élève sait que ses parents vont commenter");
+  ok(await p.isVisible("text=Tes parents vont lire tes réponses écrites"), "Fin de lecture : l'élève sait que ses parents vont lire ses réponses");
   await p.click("text=Copier le lien");
   await p.waitForSelector("text=Lien copié");
   const lienLecture = await p.evaluate(() => navigator.clipboard.readText());
