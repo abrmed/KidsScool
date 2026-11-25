@@ -2,16 +2,25 @@
 // Écran d'entrée : configuration par un parent (1re fois), puis « Qui joue ? ».
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Decor } from "@/components/Decor";
 import { CreerCodeParent } from "@/components/CreerCodeParent";
 import { FormulaireJoueur } from "@/components/FormulaireJoueur";
 import { Avatar, Chargement, boutonPrincipal, boutonSecondaire, champ } from "@/components/ui";
-import { codeValide, modifier, useDonnees, type Profil } from "@/lib/stockage";
+import { decoderInstallation, type Installation } from "@/lib/fiche";
+import { codeValide, installerProfils, modifier, useDonnees, type Profil } from "@/lib/stockage";
 
 export default function Entree() {
   const d = useDonnees();
   const [choisi, setChoisi] = useState<string | null>(null);
+  const [installation, setInstallation] = useState<Installation | null>(null);
+
+  // Lien d'installation envoyé par un parent : …/#installer=…
+  useEffect(() => {
+    const m = window.location.hash.match(/installer=([A-Za-z0-9_-]+)/);
+    if (m) decoderInstallation(m[1]).then((inst) => inst && setInstallation(inst));
+  }, []);
+
   if (!d) return <Chargement />;
   const profilChoisi = d.profils.find((p) => p.id === choisi);
 
@@ -27,7 +36,17 @@ export default function Entree() {
         </div>
 
         <section className="rounded-[2rem] bg-surface/95 p-6 shadow-2xl shadow-indigo-950/30 backdrop-blur sm:p-8">
-          {!d.parent || d.profils.length === 0 ? (
+          {installation ? (
+            <Installer
+              installation={installation}
+              onFait={() => {
+                installerProfils(installation.parent, installation.profils);
+                setInstallation(null);
+                history.replaceState(null, "", window.location.pathname);
+                if (installation.profils.length === 1) setChoisi(installation.profils[0].id);
+              }}
+            />
+          ) : !d.parent || d.profils.length === 0 ? (
             <Configuration aDejaUnCode={!!d.parent} />
           ) : profilChoisi ? (
             <CodeEnfant profil={profilChoisi} index={d.profils.indexOf(profilChoisi)} onAnnuler={() => setChoisi(null)} />
@@ -61,8 +80,55 @@ export default function Entree() {
   );
 }
 
-/** Première utilisation : un parent choisit son code, puis ajoute un premier joueur. */
+/** Installation d'un ou plusieurs profils reçus par lien. */
+function Installer({ installation, onFait }: { installation: Installation; onFait: () => void }) {
+  const noms = installation.profils.map((p) => p.prenom).join(" et ");
+  return (
+    <div className="flex flex-col items-center gap-4 text-center">
+      <div className="flex gap-3">
+        {installation.profils.map((p, i) => <Avatar key={p.id} emoji={p.avatar} index={i} taille="lg" />)}
+      </div>
+      <h2 className="text-3xl font-bold">Bienvenue {noms} ! 🎉</h2>
+      <p className="text-texte-doux">Un parent t&apos;a préparé ton profil. Touche le bouton pour l&apos;installer sur cet appareil, puis entre ton code secret.</p>
+      <button type="button" onClick={onFait} className={`${boutonPrincipal} w-full`}>Installer mon profil 🚀</button>
+    </div>
+  );
+}
+
+/** Appareil pas encore prêt : un élève attend son lien ; un parent peut tout configurer ici. */
 function Configuration({ aDejaUnCode }: { aDejaUnCode: boolean }) {
+  const [role, setRole] = useState<"choix" | "eleve" | "parent">(aDejaUnCode ? "parent" : "choix");
+  if (role === "choix") {
+    return (
+      <div className="flex flex-col gap-4">
+        <h2 className="text-center text-3xl font-bold">Bienvenue ! 👋</h2>
+        <p className="text-center text-texte-doux">Cet appareil n&apos;est pas encore prêt. Qui es-tu ?</p>
+        <button type="button" onClick={() => setRole("eleve")} className={`${boutonPrincipal} w-full`}>🎒 Je suis un élève</button>
+        <button type="button" onClick={() => setRole("parent")} className={`${boutonSecondaire} w-full`}>👨‍👩‍👦 Je suis un parent</button>
+      </div>
+    );
+  }
+  if (role === "eleve") {
+    return (
+      <div className="flex flex-col gap-4 text-center">
+        <p className="text-6xl" aria-hidden>📲</p>
+        <h2 className="text-2xl font-bold">Demande ton lien à un parent</h2>
+        <p className="text-texte-doux">
+          Ton parent va t&apos;envoyer un <strong>lien d&apos;installation</strong> (par message ou courriel). Ouvre-le sur cet appareil : ton profil
+          apparaîtra tout seul. Ensuite, tu entreras avec ton code secret.
+        </p>
+        <p className="rounded-2xl bg-fond p-3 text-sm font-semibold text-texte-doux">
+          Pour le parent : Espace parents → Joueurs → « 📲 Lien d&apos;installation ».
+        </p>
+        <button type="button" onClick={() => setRole("choix")} className="text-sm font-semibold text-texte-doux underline">← Retour</button>
+      </div>
+    );
+  }
+  return <ConfigurationParent aDejaUnCode={aDejaUnCode} />;
+}
+
+/** Première utilisation par un parent : code parent, puis premier joueur. */
+function ConfigurationParent({ aDejaUnCode }: { aDejaUnCode: boolean }) {
   const [etape, setEtape] = useState<"code" | "joueur">(aDejaUnCode ? "joueur" : "code");
   if (etape === "code") return <CreerCodeParent onFait={() => setEtape("joueur")} />;
   return (

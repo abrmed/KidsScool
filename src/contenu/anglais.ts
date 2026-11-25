@@ -1,5 +1,6 @@
 // Anglais langue seconde — 2e secondaire. Questions originales écrites pour KidsSchool.
 // Les consignes sont en anglais (immersion) ; les explications pour les parents sont en français.
+import { uniteIrreguliers } from "./irreguliers";
 import { uniteBanque } from "./outils";
 import type { Matiere, QuestionBanque } from "./types";
 
@@ -108,8 +109,9 @@ export const anglais: Matiere = {
   nom: "Anglais",
   icone: "🇬🇧",
   couleur: "vert",
-  slogan: "Vocabulary, verbs, sentences",
+  slogan: "Irregular verbs, vocabulary, sentences",
   unites: [
+    uniteIrreguliers,
     uniteBanque({ id: "vocabulary", titre: "Vocabulary", icone: "🗂️", description: "Words, false friends, idioms" }, vocabulaire),
     uniteBanque({ id: "present", titre: "Present tenses", icone: "⏰", description: "Present simple & continuous" }, present),
     uniteBanque({ id: "past", titre: "Past tenses", icone: "🕰️", description: "Regular & irregular verbs" }, passe),

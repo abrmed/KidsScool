@@ -39,8 +39,12 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
 
   // 1. Première utilisation : code parent + premier joueur
   await p.goto(URL + "/");
+  await p.waitForSelector("text=Qui es-tu ?");
+  await capture(p, S, "s0-bienvenue");
+  await p.click("text=Je suis un élève");
+  ok(await p.isVisible("text=Demande ton lien à un parent"), "Appareil neuf : l'élève est invité à demander son lien (pas de code parent)");
+  await p.click("text=← Retour"); await p.click("text=Je suis un parent");
   await p.waitForSelector("text=Réservé à un parent");
-  await capture(p, S, "s1-config");
   await p.fill("#code", "2468"); await p.fill("#code2", "2468"); await p.click("text=Enregistrer le code");
   await p.fill("#prenom", "Démo Élève"); await p.click('[aria-label="Avatar 🐼"]'); await p.fill("#code-enfant", "1357"); await p.click("text=C'est parti");
   await p.waitForSelector("text=Qui joue ?");
@@ -54,6 +58,15 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
   await p.waitForSelector("text=Mes matières");
   ok(true, "Code enfant : bon code accepté, profil ouvert");
   ok(await p.isVisible("text=Anglais") && await p.isVisible("text=Français") && await p.isVisible("text=Mathématiques"), "Accueil élève : 3 matières");
+
+  // 2b. Nouvelles unités
+  await p.goto(URL + "/matiere/?m=anglais"); await p.waitForSelector("text=Irregular verbs");
+  ok(true, "Anglais : unité « Irregular verbs » présente");
+  await p.click('a[href*="u=irregular&n=1"]'); await p.waitForSelector("text=1/8");
+  await capture(p, S, "s3b-irreguliers");
+  await p.goto(URL + "/matiere/?m=maths"); await p.waitForSelector("text=Résolution de problèmes");
+  ok(true, "Maths : unité « Résolution de problèmes » présente");
+  await p.goto(URL + "/accueil/"); await p.waitForSelector("text=Mes matières");
 
   // 3. Chemin + leçon de maths
   await p.click("text=Mathématiques"); await p.waitForSelector("text=Nombres et opérations");
@@ -116,6 +129,30 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
   await p.click("text=🎒 Joueurs");
   await p.fill("#prenom", "Démo Élève 2"); await p.fill("#code-enfant", "9753"); await p.click("button:has-text('Ajouter')");
   ok(await p.isVisible("text=Démo Élève 2 est ajouté"), "Espace parents : 2e enfant ajouté");
+
+  // 7b. Lien d'installation pour l'appareil d'un enfant
+  await p.locator("li", { hasText: "Démo Élève 2" }).locator("button", { hasText: "Lien d'installation" }).click();
+  await p.waitForSelector("text=Lien d'installation de Démo Élève 2 copié");
+  const lienInstall = await p.evaluate(() => navigator.clipboard.readText());
+  const ctxE = await b.newContext({ ...tel });
+  const pe = await ctxE.newPage();
+  await pe.goto(lienInstall); await pe.waitForSelector("text=Installer mon profil");
+  await capture(pe, S, "s7b-installation");
+  await pe.click("text=Installer mon profil"); await pe.waitForSelector("text=Tape ton code secret");
+  await pe.fill("#code-secret", "9753"); await pe.click("text=Entrer"); await pe.waitForSelector("text=Mes matières");
+  ok((await pe.textContent("main")).includes("Démo Élève 2"), "Lien d'installation : profil installé sur un appareil neuf, sans code parent");
+  await pe.goto(URL + "/"); await pe.waitForSelector("text=Qui joue ?");
+  ok(await pe.locator("text=Démo Élève 2").count() === 1, "Appareil de l'enfant : « Qui joue ? » affiche son profil");
+  await ctxE.close();
+
+  // 7c. Impression
+  await p.click("text=🖨️ Imprimer"); await p.waitForSelector("text=Imprimer une feuille");
+  ok(await p.isVisible("text=Feuille d'exercices") && await p.isVisible("text=Jour de tempête"), "Impression : feuille de français prête (avec le texte)");
+  await p.emulateMedia({ media: "print" });
+  await p.pdf({ path: S + "/feuille-francais.pdf", format: "Letter" }).catch(() => {});
+  await p.emulateMedia({ media: "screen" });
+  await p.click("text=Voir le corrigé à l'écran");
+  ok(await p.isVisible("text=Corrigé (parents)") && await p.isVisible("text=Réponse modèle"), "Impression : corrigé disponible pour les parents");
 
   // 8. L'enfant voit le message de ses parents (sans les choix multiples)
   await p.goto(URL + "/");

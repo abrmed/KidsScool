@@ -1,5 +1,6 @@
 // Mathématiques — 2e secondaire (PFEQ). Questions générées : toujours nouvelles, réponses calculées.
 import { choisir, entier, melanger, nb, uniteGeneree } from "./outils";
+import { uniteProblemes } from "./problemes";
 import type { Matiere, Niveau, Question } from "./types";
 
 const pgcd = (a: number, b: number): number => (b === 0 ? Math.abs(a) : pgcd(b, a % b));
@@ -27,6 +28,14 @@ const saisieNombre = (consigne: string, enonce: string, reponse: number, explica
 
 // ── 1. Nombres et opérations ─────────────────────────────────
 function operations(niveau: Niveau, h: () => number): Question {
+  // 2e secondaire : on commence directement aux entiers relatifs.
+  if (niveau === 5) {
+    const a = entier(h, 2, 6), b = entier(h, 2, 9), c = entier(h, 1, 9), d = entier(h, 2, 5);
+    const r = (-a) ** 2 - d * (c - b) + (b - c) ** 2 / 1;
+    return saisieNombre("Défi : priorité des opérations", `(−${a})² − ${d} × (${c} − ${b}) + (${b} − ${c})²`, r,
+      `(−${a})² = ${a * a} ; ${d} × (${c - b}) = ${d * (c - b)} ; (${b - c})² = ${(b - c) ** 2} ; ${a * a} − ${signe(d * (c - b))} + ${(b - c) ** 2} = ${r}.`);
+  }
+  niveau = (niveau + 1) as Niveau;
   switch (niveau) {
     case 1: {
       const a = entier(h, 12, 99), b = entier(h, 2, 9), op = choisir(h, ["+", "−", "×"] as const);
@@ -211,8 +220,9 @@ export const maths: Matiere = {
   nom: "Mathématiques",
   icone: "🔢",
   couleur: "bleu",
-  slogan: "Calculs, fractions, équations",
+  slogan: "Problèmes, fractions, équations",
   unites: [
+    uniteProblemes,
     uniteGeneree({ id: "operations", titre: "Nombres et opérations", icone: "➕", description: "Entiers relatifs et priorité des opérations" }, operations),
     uniteGeneree({ id: "fractions", titre: "Fractions", icone: "🍕", description: "Simplifier, additionner, multiplier" }, fractions),
     uniteGeneree({ id: "proportions", titre: "Pourcentages et proportions", icone: "📊", description: "Rabais, règle de trois" }, proportions),

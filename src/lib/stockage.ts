@@ -253,3 +253,12 @@ export function ajouterRetour(retour: Retour) {
 export function marquerRetourVu(id: string) {
   modifier((d) => ({ ...d, retours: (d.retours ?? []).map((x) => (x.id === id ? { ...x, vu: true } : x)) }));
 }
+
+/** Installe sur cet appareil le code parent et les profils reçus par un lien d'installation. */
+export function installerProfils(parent: CodeProtege, profils: Profil[]) {
+  modifier((d) => {
+    const ids = new Set(d.profils.map((p) => p.id));
+    const fusion = d.profils.map((p) => profils.find((n) => n.id === p.id) ?? p);
+    return { ...d, parent, profils: [...fusion, ...profils.filter((p) => !ids.has(p.id))] };
+  });
+}

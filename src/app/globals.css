@@ -71,3 +71,14 @@ body {
 h1, h2, h3, .font-titre {
   font-family: var(--font-titre);
 }
+
+/* Impression : seule la feuille d'exercices est imprimée, en noir sur blanc. */
+@media print {
+  @page { margin: 14mm; }
+  html, body { background: #fff !important; color: #000 !important; }
+  body * { visibility: hidden; }
+  .zone-impression, .zone-impression * { visibility: visible; }
+  .zone-impression { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; padding: 0 !important; }
+  .pas-imprimer { display: none !important; }
+  * { animation: none !important; }
+}

@@ -124,6 +124,15 @@
 - Limite connue : la correction automatique des réponses rédigées repère des mots-clés ; elle peut être trop sévère ou trop généreuse. Le parent ajuste la note avant de montrer.
 - Testé : 125 000 questions + 8 cas de correction, 0 problème ; navigateur 24/24.
 
+### Étape F : installation, impression, problèmes, verbes irréguliers — ✅ 2026-11-25
+- Problème signalé : le fils, sur son téléphone, tombait sur la création du code parent (chaque appareil est indépendant).
+- Écran d'accueil d'un appareil neuf : « Je suis un élève » (demande ton lien) / « Je suis un parent ».
+- Espace parents → Joueurs → « 📲 Lien d'installation » : l'enfant ouvre le lien, son profil et le code parent s'installent ; il entre avec son code.
+- Espace parents → « 🖨️ Imprimer » : feuille d'exercices (texte, cases, lignes d'écriture) et corrigé, pour toutes les unités ; dictée : phrases à lire dans le corrigé.
+- Maths : unité « Résolution de problèmes » en premier (argent, taxes, recettes, vitesse, équations en contexte, volumes, moyenne, disque, échelle, probabilités, débit), démarche détaillée pour les parents. Opérations : niveaux décalés vers le haut + défi avec exposants.
+- Anglais : unité « Irregular verbs » en premier (65 verbes) : past simple, participe passé, sens, phrases, pièges « -ed », « didn't + base », present perfect, les 3 formes.
+- Testé : 141 000 questions + cas de correction, 0 problème ; navigateur 31/31.
+
 ### Prochaines étapes — ⏳ en attente de confirmation
 1. Fermer les anciens services : supprimer le projet Supabase (il contient encore 2 comptes), révoquer le jeton.
 2. (fait) Mise en ligne sur GitHub Pages.

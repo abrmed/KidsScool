@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CreerCodeParent } from "@/components/CreerCodeParent";
+import { Impression } from "@/components/Impression";
 import { FormulaireJoueur } from "@/components/FormulaireJoueur";
 import { Avatar, Chargement, LienRetour, Page, boutonPrincipal, boutonSecondaire, champ } from "@/components/ui";
 import { trouverTexte } from "@/contenu";
 import { NOMS_NIVEAUX } from "@/contenu/types";
 import { BlocTexte } from "@/components/BlocTexte";
 import { afficherScore } from "@/lib/correction";
-import { decoderFiche, encoderRetour, lienRetour } from "@/lib/fiche";
+import { decoderFiche, encoderInstallation, encoderRetour, lienInstallation, lienRetour } from "@/lib/fiche";
 import {
   ajouterRetour, changerCodeJoueur, creerRetour, definirCodeParent, enregistrerRevue, estCommentable, formatCodeValide,
   modifier, pointsDe, scoreRevise, useDonnees, verifierCodeParent, type Donnees, type Resultat,
@@ -70,7 +71,7 @@ function Verrou({ onOuvrir }: { onOuvrir: () => void }) {
 }
 
 function Contenu({ d, onFermer }: { d: Donnees; onFermer: () => void }) {
-  const [onglet, setOnglet] = useState<"resultats" | "importer" | "joueurs" | "reglages">("resultats");
+  const [onglet, setOnglet] = useState<"resultats" | "imprimer" | "importer" | "joueurs" | "reglages">("resultats");
   const [ficheRecue, setFicheRecue] = useState<Resultat | null>(null);
 
   // Fiche reçue par lien (…/parents/#fiche=…)
@@ -81,6 +82,7 @@ function Contenu({ d, onFermer }: { d: Donnees; onFermer: () => void }) {
 
   const onglets = [
     ["resultats", "📊 Résultats"],
+    ["imprimer", "🖨️ Imprimer"],
     ["importer", "📥 Importer une fiche"],
     ["joueurs", "🎒 Joueurs"],
     ["reglages", "⚙️ Réglages"],
@@ -129,6 +131,7 @@ function Contenu({ d, onFermer }: { d: Donnees; onFermer: () => void }) {
       </nav>
 
       {onglet === "resultats" && <Resultats d={d} />}
+      {onglet === "imprimer" && <Impression />}
       {onglet === "importer" && <Importer onFiche={setFicheRecue} />}
       {onglet === "joueurs" && <Joueurs d={d} />}
       {onglet === "reglages" && <Reglages />}
@@ -338,7 +341,7 @@ function Joueurs({ d }: { d: Donnees }) {
   const [message, setMessage] = useState<string | null>(null);
   return (
     <section className="flex flex-col gap-4">
-      {message && <p role="status" className="rounded-2xl bg-primaire-doux px-4 py-3 font-semibold">{message}</p>}
+      {message && <p role="status" className="break-all rounded-2xl bg-primaire-doux px-4 py-3 font-semibold">{message}</p>}
       <ul className="grid gap-3 sm:grid-cols-2">
         {d.profils.map((p, i) => (
           <li key={p.id} className="flex flex-col gap-3 rounded-3xl bg-surface p-4 ring-1 ring-bordure">
@@ -369,6 +372,22 @@ function Joueurs({ d }: { d: Donnees }) {
               </form>
             ) : (
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-xl bg-primaire px-3 py-2 text-sm font-bold text-white dark:text-fond"
+                  onClick={async () => {
+                    if (!d.parent) return;
+                    const lien = lienInstallation(await encoderInstallation({ v: 1, parent: d.parent, profils: [p] }));
+                    const texte = `${p.prenom}, voici ton lien pour installer KidsSchool sur ton appareil :`;
+                    try {
+                      if (navigator.share) { await navigator.share({ title: "KidsSchool : installation", text: texte, url: lien }); setMessage(`Lien d'installation envoyé à ${p.prenom} ✓`); return; }
+                    } catch (e) { if ((e as Error).name === "AbortError") return; }
+                    try { await navigator.clipboard.writeText(lien); setMessage(`Lien d'installation de ${p.prenom} copié ✓ Envoie-le-lui par message ou courriel, puis il l'ouvre sur son appareil.`); }
+                    catch { setMessage(lien); }
+                  }}
+                >
+                  📲 Lien d&apos;installation
+                </button>
                 <button type="button" onClick={() => { setEdition(p.id); setNouveauCode(""); setMessage(null); }} className="rounded-xl px-3 py-2 text-sm font-bold ring-1 ring-bordure hover:bg-primaire-doux">
                   🔑 {p.code ? "Changer son code" : "Définir son code"}
                 </button>

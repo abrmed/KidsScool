@@ -2,7 +2,7 @@
 // « Fiche de résultats » : un lien que l'enfant envoie à un parent.
 // Le résultat est compressé dans le lien (après #, donc jamais envoyé à un serveur).
 // Le parent l'ouvre dans l'Espace parents, protégé par son code.
-import type { Resultat, Retour } from "./stockage";
+import type { CodeProtege, Profil, Resultat, Retour } from "./stockage";
 
 const enBase64Url = (octets: Uint8Array) => {
   let bin = "";
@@ -61,4 +61,28 @@ export async function decoderRetour(code: string): Promise<Retour | null> {
 export function lienRetour(code: string) {
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   return `${window.location.origin}${base}/messages/#retour=${code}`;
+}
+
+// ── Lien d'installation : configure l'appareil d'un enfant avec son profil ──
+export type Installation = { v: 1; parent: CodeProtege; profils: Profil[] };
+
+export async function encoderInstallation(inst: Installation): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(inst));
+  return enBase64Url(await transformer(json, new CompressionStream("deflate-raw")));
+}
+
+export async function decoderInstallation(code: string): Promise<Installation | null> {
+  try {
+    const json = await transformer(deBase64Url(code.trim()), new DecompressionStream("deflate-raw"));
+    const obj = JSON.parse(new TextDecoder().decode(json)) as Installation;
+    if (obj?.v !== 1 || !obj.parent?.empreinte || !Array.isArray(obj.profils)) return null;
+    return obj;
+  } catch {
+    return null;
+  }
+}
+
+export function lienInstallation(code: string) {
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  return `${window.location.origin}${base}/#installer=${code}`;
 }
