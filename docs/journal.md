@@ -142,7 +142,12 @@
 ### Étape H : correction immédiate — ✅ 2026-11-25
 - Après « Valider » : « Bravo ! » ou « Pas tout à fait… », bonne réponse, explication ; bonnes et mauvaises réponses colorées dans les choix ; commentaires et exemple de bonne réponse pour les réponses écrites et la dictée ; bouton « Continuer ».
 - Testé : navigateur 35/35 (dont « chaque réponse est validée avec une explication »).
-- En attente : décision du parent sur l'envoi automatique des résultats (nécessite un service en ligne).
+- Envoi des résultats : voir étape I.
+
+### Étape I : envoi de la fiche à la fin de chaque module — ✅ 2026-11-25
+- Choix du parent : option 2 (sans courriel ni service).
+- La fiche est préparée dès la correction de la dernière question ; le bouton « Voir mon score et l'envoyer » ouvre la fenêtre de partage du téléphone avec la fiche. Écran de fin : « ✅ Ta fiche est partie chez tes parents ! », ou bouton de secours si l'envoi a été annulé.
+- Testé : navigateur 37/37 (fenêtre de partage simulée).
 
 ### Prochaines étapes — ⏳ en attente de confirmation
 1. Fermer les anciens services : supprimer le projet Supabase (il contient encore 2 comptes), révoquer le jeton.

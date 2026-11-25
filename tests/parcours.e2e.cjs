@@ -151,6 +151,8 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
   await p.waitForSelector("text=Lien d'installation de Démo Élève 2 copié");
   const lienInstall = await p.evaluate(() => navigator.clipboard.readText());
   const ctxE = await b.newContext({ ...tel });
+  // Simule la fenêtre de partage du téléphone (Messages, etc.) pour vérifier l'envoi automatique.
+  await ctxE.addInitScript(() => { window.__partages = []; navigator.share = async (d) => { window.__partages.push(d); }; });
   const pe = await ctxE.newPage();
   await pe.goto(lienInstall); await pe.waitForSelector("text=Installer mon profil");
   await capture(pe, S, "s7b-installation");
@@ -159,6 +161,13 @@ const capture = async (p, S, nom) => { await p.waitForTimeout(900); await p.scre
   ok((await pe.textContent("main")).includes("Démo Élève 2"), "Lien d'installation : profil installé sur un appareil neuf, sans code parent");
   await pe.goto(URL + "/"); await pe.waitForSelector("text=Qui joue ?");
   ok(await pe.locator("text=Démo Élève 2").count() === 1, "Appareil de l'enfant : « Qui joue ? » affiche son profil");
+  await pe.click("text=Démo Élève 2"); await pe.fill("#code-secret", "9753"); await pe.click("text=Entrer"); await pe.waitForSelector("text=Mes matières");
+  await pe.goto(URL + "/lecon/?m=maths&u=operations&n=1"); await pe.waitForSelector("text=1/8");
+  await faireLecon(pe, 8);
+  const partages = await pe.evaluate(() => window.__partages);
+  ok(partages.length === 1 && partages[0].url.includes("/parents/#fiche="), "Fin de module : la fenêtre d'envoi de la fiche s'ouvre automatiquement");
+  ok(await pe.isVisible("text=Ta fiche est partie chez tes parents"), "Fin de module : l'enfant voit que sa fiche est partie");
+  await capture(pe, S, "s6b-envoi-auto");
   await ctxE.close();
 
   // 7b'. Inviter l'autre parent (qui a déjà créé son propre code et un joueur en double)

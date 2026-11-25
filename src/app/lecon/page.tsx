@@ -41,6 +41,8 @@ function Lecon() {
   const [reponses, setReponses] = useState<ReponseEleve[]>([]);
   const [resultat, setResultat] = useState<Resultat | null>(null);
   const [enregistree, setEnregistree] = useState(false);
+  const [pret, setPret] = useState<{ resultat: Resultat; lien: string } | null>(null);
+  const [envoi, setEnvoi] = useState<"envoyee" | "annulee" | "impossible" | null>(null);
 
   useEffect(() => {
     if (d && (!profil || !trouve || !niveau)) router.replace(profil ? "/accueil/" : "/");
@@ -50,36 +52,59 @@ function Lecon() {
   const { matiere, unite } = trouve;
   const retour = `/matiere/?m=${matiere.id}`;
 
-  if (resultat) return <EcranFin resultat={resultat} retour={retour} />;
+  if (resultat) return <EcranFin resultat={resultat} retour={retour} envoi={envoi} />;
 
   const index = reponses.length;
   const question = questions[index];
 
-  function repondre(donnee: string) {
+  function avecReponse(donnee: string): ReponseEleve[] {
     const ev = evaluer(question, donnee);
-    const nouvelles: ReponseEleve[] = [
+    return [
       ...reponses,
       { question, donnee, correcte: ev.points === 1, points: ev.points, commentaires: ev.commentaires, bonneReponse: bonneReponse(question) },
     ];
+  }
+
+  function construireResultat(nouvelles: ReponseEleve[]): Resultat {
+    const score = nouvelles.reduce((t, r) => t + (r.points ?? 0), 0);
+    return {
+      id: nouvelId(),
+      profilId: profil!.id,
+      prenom: profil!.prenom,
+      matiere: matiere.id,
+      matiereNom: matiere.nom,
+      uniteId: unite.id,
+      uniteTitre: unite.titre,
+      niveau: niveau!,
+      debut,
+      fin: Date.now(),
+      score,
+      total: nouvelles.length,
+      reponses: nouvelles,
+    };
+  }
+
+  /** Dernière question corrigée : on prépare déjà la fiche, pour que l'envoi s'ouvre au toucher suivant. */
+  function preparerFiche(donnee: string) {
+    const r = construireResultat(avecReponse(donnee));
+    encoderFiche(r).then((code) => setPret({ resultat: r, lien: lienFiche(code) }));
+  }
+
+  function repondre(donnee: string) {
+    const nouvelles = avecReponse(donnee);
     setReponses(nouvelles);
     if (nouvelles.length === questions.length && !enregistree) {
-      const score = nouvelles.reduce((t, r) => t + (r.points ?? 0), 0);
-      const r: Resultat = {
-        id: nouvelId(),
-        profilId: profil!.id,
-        prenom: profil!.prenom,
-        matiere: matiere.id,
-        matiereNom: matiere.nom,
-        uniteId: unite.id,
-        uniteTitre: unite.titre,
-        niveau: niveau!,
-        debut,
-        fin: Date.now(),
-        score,
-        total: nouvelles.length,
-        reponses: nouvelles,
-      };
-      enregistrerResultat(r, etoiles(score, r.total));
+      const r = pret?.resultat ?? construireResultat(nouvelles);
+      // Envoi automatique aux parents : la fenêtre de partage s'ouvre avec la fiche (le téléphone exige un dernier « Envoyer »).
+      if (pret && typeof navigator !== "undefined" && navigator.share) {
+        navigator
+          .share({ title: "KidsSchool : fiche de résultats", text: texteFiche(r), url: pret.lien })
+          .then(() => setEnvoi("envoyee"))
+          .catch((e: Error) => setEnvoi(e.name === "AbortError" ? "annulee" : "impossible"));
+      } else {
+        setEnvoi("impossible");
+      }
+      enregistrerResultat(r, etoiles(r.score, r.total));
       setEnregistree(true);
       setResultat(r);
     }
@@ -102,12 +127,31 @@ function Lecon() {
       </p>
 
       {/* La clé force un nouvel affichage (et l'animation) à chaque question. */}
-      <CarteQuestion key={index} question={question} graine={graine + index} onValider={repondre} derniere={index === questions.length - 1} />
+      <CarteQuestion
+        key={index}
+        question={question}
+        graine={graine + index}
+        onValider={repondre}
+        onCorrige={index === questions.length - 1 ? preparerFiche : undefined}
+        derniere={index === questions.length - 1}
+      />
     </main>
   );
 }
 
-function CarteQuestion({ question, graine, onValider, derniere }: { question: Question; graine: number; onValider: (r: string) => void; derniere: boolean }) {
+function CarteQuestion({
+  question,
+  graine,
+  onValider,
+  onCorrige,
+  derniere,
+}: {
+  question: Question;
+  graine: number;
+  onValider: (r: string) => void;
+  onCorrige?: (r: string) => void;
+  derniere: boolean;
+}) {
   const [valeur, setValeur] = useState("");
   const [choisis, setChoisis] = useState<number[]>([]); // indices des tuiles (questions « ordre »)
   const [correction, setCorrection] = useState<ReturnType<typeof evaluer> | null>(null);
@@ -122,6 +166,7 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
   function valider() {
     if (!pret) return;
     setCorrection(evaluer(question, reponse));
+    onCorrige?.(reponse);
   }
 
   const texte = trouverTexte(question.texteId);
@@ -229,7 +274,7 @@ function CarteQuestion({ question, graine, onValider, derniere }: { question: Qu
       <div className="sticky bottom-0 mt-auto bg-fond/90 pb-2 pt-4 backdrop-blur">
         {correction ? (
           <button type="button" autoFocus onClick={() => onValider(reponse)} className={`${boutonPrincipal} w-full`}>
-            {derniere ? "Voir mon score 🏁" : "Continuer →"}
+            {derniere ? "Voir mon score et l'envoyer 🏁" : "Continuer →"}
           </button>
         ) : (
           <button type="button" onClick={valider} disabled={!pret} className={`${boutonPrincipal} w-full`}>
@@ -284,24 +329,26 @@ const MESSAGES = [
   { titre: "Parfait ! 👑", texte: "Tu maîtrises ce niveau !" },
 ];
 
-function EcranFin({ resultat, retour }: { resultat: Resultat; retour: string }) {
+const texteFiche = (r: Resultat) =>
+  `${r.prenom} a terminé « ${r.uniteTitre} » (niveau ${r.niveau}) en ${r.matiereNom} : ${afficherScore(r.score)}/${r.total}. Fiche pour les parents :`;
+
+function EcranFin({ resultat, retour, envoi }: { resultat: Resultat; retour: string; envoi: "envoyee" | "annulee" | "impossible" | null }) {
   const nb = etoiles(resultat.score, resultat.total);
   const msg = MESSAGES[nb];
   const [etat, setEtat] = useState<string | null>(null);
 
   async function envoyer() {
     const lien = lienFiche(await encoderFiche(resultat));
-    const texte = `${resultat.prenom} a terminé « ${resultat.uniteTitre} » (niveau ${resultat.niveau}) en ${resultat.matiereNom}. Fiche pour les parents :`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "KidsSchool : fiche de résultats", text: texte, url: lien });
+        await navigator.share({ title: "KidsSchool : fiche de résultats", text: texteFiche(resultat), url: lien });
         setEtat("Fiche envoyée ! 📨");
         return;
       }
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
     }
-    window.location.href = `mailto:?subject=${encodeURIComponent("KidsSchool : fiche de résultats")}&body=${encodeURIComponent(`${texte}\n\n${lien}`)}`;
+    await copier();
   }
 
   async function copier() {
@@ -342,9 +389,16 @@ function EcranFin({ resultat, retour }: { resultat: Resultat; retour: string }) 
       </p>
 
       <div className="relative flex w-full flex-col gap-3">
-        <button type="button" onClick={envoyer} className={boutonPrincipal}>📨 Envoyer ma fiche à un parent</button>
-        <button type="button" onClick={copier} className={boutonSecondaire}>🔗 Copier le lien de la fiche</button>
-        {etat && <p role="status" className="font-semibold text-succes">{etat}</p>}
+        {envoi === "envoyee" || etat === "Fiche envoyée ! 📨" ? (
+          <p role="status" className="rounded-2xl bg-emerald-100 px-4 py-3 font-bold text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">✅ Ta fiche est partie chez tes parents !</p>
+        ) : (
+          <>
+            {envoi === "annulee" && <p className="font-semibold text-accent">La fiche n&apos;a pas été envoyée. Touche le bouton pour l&apos;envoyer à tes parents :</p>}
+            <button type="button" onClick={envoyer} className={boutonPrincipal}>📨 Envoyer ma fiche à mes parents</button>
+            <button type="button" onClick={copier} className={boutonSecondaire}>🔗 Copier le lien de la fiche</button>
+          </>
+        )}
+        {etat && etat !== "Fiche envoyée ! 📨" && <p role="status" className="font-semibold text-succes">{etat}</p>}
         <div className="grid grid-cols-2 gap-3">
           <Link href={retour} className={boutonSecondaire}>🗺️ Mon chemin</Link>
           <button type="button" onClick={() => window.location.reload()} className={boutonSecondaire}>🔁 Rejouer</button>

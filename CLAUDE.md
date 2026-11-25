@@ -25,6 +25,7 @@ Depuis le 2026-11-25 : **aucun compte, aucune base de données, aucune connexion
 - Chaque enfant a son **profil** et son **code secret** (choisi par un parent, réinitialisable dans l'Espace parents). Les parents partagent **un seul code parent**.
 - Appareil d'un enfant : le parent envoie un **lien d'installation** (`…/#installer=…`, Espace parents → Joueurs) qui installe le profil et le code parent ; l'enfant ne voit jamais l'écran de création du code parent.
 - Autre parent : « 📨 Inviter l'autre parent » (Espace parents → Joueurs) envoie un lien `…/#installer=…` (pour = parent) avec le même code parent et tous les joueurs ; option (par défaut) d'effacer ce qui a été créé en double sur son appareil.
+- Fin de module : en touchant « Voir mon score et l'envoyer », la fenêtre de partage du téléphone s'ouvre **automatiquement** avec la fiche (option 2 choisie par le parent : pas de courriel, pas de service ; un site ne peut pas envoyer un texto seul, l'enfant confirme « Envoyer »). Bouton de secours si annulé.
 - Deux moyens pour les parents : consulter l'appareil de l'enfant, ou ouvrir la **fiche de résultats** (lien `…/parents/#fiche=…` compressé, envoyé par l'enfant).
 - Exercices **originaux** (pas de copie d'Alloprof). 5 niveaux : Débutant, Facile, Intermédiaire, Avancé, Défi.
 - Ne jamais écrire les prénoms réels de la famille dans le dépôt : ils ne vivent que dans le navigateur de chaque appareil.
@@ -33,5 +34,5 @@ Depuis le 2026-11-25 : **aucun compte, aucune base de données, aucune connexion
 - Next.js 16 en export statique (`output: "export"`, dossier `out/`), Tailwind 4, polices Fredoka/Nunito installées localement.
 - Données : `localStorage` (`src/lib/stockage.ts`), toujours protégé par try/catch.
 - Contenu : `src/contenu/` (maths générées, français et anglais en banques). Après toute modification : `npm run verifier` (doit afficher 0 problème).
-- Test navigateur : `npm run build`, servir `out/` sur le port 3200, puis `node tests/parcours.e2e.cjs <dossier-captures>` (35 vérifications).
+- Test navigateur : `npm run build`, servir `out/` sur le port 3200, puis `node tests/parcours.e2e.cjs <dossier-captures>` (37 vérifications).
 - En ligne (GitHub Pages) : construire avec `NEXT_PUBLIC_BASE_PATH=/KidsScool`.
